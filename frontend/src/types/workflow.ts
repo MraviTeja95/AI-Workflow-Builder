@@ -9,6 +9,8 @@ export type NodeType =
 
 export type TriggerConfig = {
   triggerType: "Manual" | "Webhook" | "Schedule";
+  webhookSecret?: string;
+  webhookPath?: string;
 };
 
 export type AIAgentConfig = {
@@ -33,7 +35,24 @@ export type DatabaseConfig = {
 };
 
 export type ConditionConfig = {
-  expression: string;
+  expression?: string;
+  field?: string;
+  operator?:
+    | "contains"
+    | "not_contains"
+    | "equals"
+    | "not_equals"
+    | "starts_with"
+    | "ends_with"
+    | "greater_than"
+    | "less_than"
+    | "is_empty"
+    | "is_not_empty";
+  value?: string;
+  trueStepId?: string;
+  falseStepId?: string;
+  trueBranchStepName?: string;
+  falseBranchStepName?: string;
 };
 
 export type NotifyConfig = {
@@ -44,7 +63,7 @@ export type NotifyConfig = {
 
 export type ApprovalGateConfig = {
   message: string;
-  requiredRole: "Owner" | "Admin" | "Member";
+  requiredRole: "Owner" | "Editor" | "Viewer";
   timeoutHours: number;
 };
 
@@ -58,11 +77,48 @@ export type WorkflowNodeConfig = {
   approvalGate?: ApprovalGateConfig;
 };
 
+export type StepRunStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped"
+  | "paused";
+
+export interface StepRun {
+  id: string;
+  workflow_run_id: string;
+  workflow_step_id: string;
+  status: StepRunStatus;
+  input?: Record<string, unknown> | null;
+  output?: Record<string, unknown> | null;
+  error?: string | null;
+  attempt_count: number;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  created_at: string;
+  workflow_step?: {
+    id: string;
+    name: string;
+    type: string;
+    position?: number;
+    config?: Record<string, unknown>;
+  } | null;
+}
+
 export type WorkflowNodeData = {
   label: string;
   icon: string;
   nodeType: NodeType;
   config: WorkflowNodeConfig;
+  stepId?: string;
+  executionStatus?: StepRunStatus;
+  executionError?: string | null;
+  liveStepRun?: StepRun;
+  userRole?: string | null;
+  onApprove?: (stepId?: string, stepRunId?: string) => void;
   [key: string]: unknown;
 };
 
@@ -98,7 +154,7 @@ export const DEFAULT_NODE_CONFIGS: Record<
     config: {
       httpRequest: {
         method: "GET",
-        url: "https://api.example.com/v1/data",
+        url: "https://httpbin.org/get",
         headers: '{\n  "Content-Type": "application/json"\n}',
         body: '{\n  "key": "value"\n}',
       },
@@ -120,7 +176,10 @@ export const DEFAULT_NODE_CONFIGS: Record<
     icon: "◆",
     config: {
       condition: {
-        expression: '{{steps.trigger.data.status}} === "active"',
+        field: "content",
+        operator: "contains",
+        value: "APPROVE",
+        expression: 'lastOutput.content && lastOutput.content.includes("APPROVE")',
       },
     },
   },

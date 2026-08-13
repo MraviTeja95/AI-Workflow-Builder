@@ -16,6 +16,8 @@ interface NodePropertiesPanelProps {
     configValue: Partial<NonNullable<WorkflowNodeConfig[K]>>
   ) => void;
   onDeselectNode: () => void;
+  onDeleteNode: (nodeId: string) => void;
+  onApproveStep?: (stepId?: string, stepRunId?: string) => void;
 }
 
 export function NodePropertiesPanel({
@@ -23,6 +25,8 @@ export function NodePropertiesPanel({
   onUpdateNodeName,
   onUpdateNodeConfig,
   onDeselectNode,
+  onDeleteNode,
+  onApproveStep,
 }: NodePropertiesPanelProps) {
   if (!selectedNode) {
     return (
@@ -142,21 +146,94 @@ export function NodePropertiesPanel({
               </label>
               <select
                 value={config.trigger?.triggerType ?? "Manual"}
-                onChange={(e) =>
+                disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
+                onChange={(e) => {
+                  const newType = e.target.value as "Manual" | "Webhook" | "Schedule";
+                  const existingSecret = config.trigger?.webhookSecret;
+                  const autoSecret =
+                    newType === "Webhook" && !existingSecret
+                      ? `whsec_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}`
+                      : existingSecret;
+
                   onUpdateNodeConfig(id, "trigger", {
-                    triggerType: e.target.value as
-                      | "Manual"
-                      | "Webhook"
-                      | "Schedule",
-                  })
-                }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    triggerType: newType,
+                    webhookSecret: autoSecret,
+                  });
+                }}
+                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               >
                 <option value="Manual">Manual</option>
                 <option value="Webhook">Webhook</option>
                 <option value="Schedule">Schedule</option>
               </select>
             </div>
+
+            {data.userRole && data.userRole.toLowerCase() !== "owner" && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+                🛡️ Webhook configuration is restricted to organization Owners.
+              </div>
+            )}
+
+            {config.trigger?.triggerType === "Webhook" && (
+              <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-200">Webhook Settings</span>
+                  <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-mono text-blue-300">
+                    Active
+                  </span>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-medium text-zinc-400">
+                    Webhook Secret Token
+                  </label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="password"
+                      value={config.trigger?.webhookSecret || ""}
+                      readOnly={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
+                      onChange={(e) =>
+                        onUpdateNodeConfig(id, "trigger", {
+                          triggerType: "Webhook",
+                          webhookSecret: e.target.value,
+                        })
+                      }
+                      placeholder="whsec_..."
+                      className="w-full rounded-lg border border-white/10 bg-[#141414] px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-blue-500 placeholder:text-zinc-600 disabled:opacity-50"
+                    />
+                    {(!data.userRole || data.userRole.toLowerCase() === "owner") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSecret = `whsec_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 10)}`;
+                          onUpdateNodeConfig(id, "trigger", {
+                            triggerType: "Webhook",
+                            webhookSecret: newSecret,
+                          });
+                        }}
+                        title="Regenerate Secret"
+                        className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        🔄
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10px] text-zinc-500">
+                    Required in <code className="text-zinc-400">x-webhook-secret</code> or <code className="text-zinc-400">Bearer</code> header.
+                  </p>
+                </div>
+
+                <div className="rounded border border-white/5 bg-black/40 p-2 text-[11px] text-zinc-400">
+                  <div className="font-semibold text-zinc-300 mb-1">HTTP Inbound Request:</div>
+                  <div className="font-mono text-[10px] text-blue-300 break-all">
+                    POST /api/triggers/webhook/[workflow-id]
+                  </div>
+                  <div className="mt-1 text-[10px] text-zinc-500">
+                    Downstream steps can reference payload fields via <code className="text-zinc-300">{"{{ trigger.data.event }}"}</code> or <code className="text-zinc-300">{"{{ trigger.data.your_key }}"}</code>.
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -344,12 +421,19 @@ export function NodePropertiesPanel({
         {/* 4. DATABASE NODE */}
         {nodeType === "database" && (
           <div className="space-y-4">
+            {data.userRole && data.userRole.toLowerCase() !== "owner" && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+                🛡️ Database write configuration is restricted to organization Owners.
+              </div>
+            )}
+
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-300">
                 Operation
               </label>
               <select
-                value={config.database?.operation ?? "SELECT"}
+                value={config.database?.operation ?? "INSERT"}
+                disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "database", {
                     operation: e.target.value as
@@ -359,12 +443,12 @@ export function NodePropertiesPanel({
                       | "DELETE",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               >
-                <option value="SELECT">SELECT</option>
                 <option value="INSERT">INSERT</option>
                 <option value="UPDATE">UPDATE</option>
                 <option value="DELETE">DELETE</option>
+                <option value="SELECT">SELECT</option>
               </select>
             </div>
 
@@ -375,31 +459,36 @@ export function NodePropertiesPanel({
               <input
                 type="text"
                 value={config.database?.tableName ?? ""}
+                readOnly={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "database", {
                     tableName: e.target.value,
                   })
                 }
-                placeholder="e.g. users or orders"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="e.g. audit_logs or records"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Query / Configuration
+                Query / SQL Expression
               </label>
               <textarea
                 rows={4}
                 value={config.database?.query ?? ""}
+                readOnly={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "database", {
                     query: e.target.value,
                   })
                 }
-                placeholder="SELECT * FROM users WHERE active = true;"
-                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder="INSERT INTO audit_logs (event, user_id) VALUES ('{{trigger.data.action}}', '{{trigger.data.userId}}');"
+                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               />
+              <p className="mt-1 text-[10px] text-zinc-500">
+                Supports workflow variables like <code className="text-zinc-300">{"{{ trigger.data.field }}"}</code> or <code className="text-zinc-300">{"{{ steps.StepName.output }}"}</code>.
+              </p>
             </div>
           </div>
         )}
@@ -409,22 +498,92 @@ export function NodePropertiesPanel({
           <div className="space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Condition Expression
+                Evaluation Target Field
+              </label>
+              <input
+                type="text"
+                value={config.condition?.field ?? "content"}
+                onChange={(e) =>
+                  onUpdateNodeConfig(id, "condition", {
+                    field: e.target.value,
+                  })
+                }
+                placeholder="e.g. content, status, or data.result"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Field from the previous step output to evaluate (e.g. &quot;content&quot;).
+              </p>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
+                Comparison Operator
+              </label>
+              <select
+                value={config.condition?.operator ?? "contains"}
+                onChange={(e) =>
+                  onUpdateNodeConfig(id, "condition", {
+                    operator: e.target.value as
+                      | "contains"
+                      | "not_contains"
+                      | "equals"
+                      | "not_equals"
+                      | "starts_with"
+                      | "ends_with"
+                      | "greater_than"
+                      | "less_than"
+                      | "is_empty"
+                      | "is_not_empty",
+                  })
+                }
+                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="contains">contains</option>
+                <option value="not_contains">does not contain</option>
+                <option value="equals">equals</option>
+                <option value="not_equals">not equals</option>
+                <option value="starts_with">starts with</option>
+                <option value="ends_with">ends with</option>
+                <option value="greater_than">greater than (&gt;)</option>
+                <option value="less_than">less than (&lt;)</option>
+                <option value="is_empty">is empty</option>
+                <option value="is_not_empty">is not empty</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
+                Comparison Value
+              </label>
+              <input
+                type="text"
+                value={config.condition?.value ?? "APPROVE"}
+                onChange={(e) =>
+                  onUpdateNodeConfig(id, "condition", {
+                    value: e.target.value,
+                  })
+                }
+                placeholder="e.g. APPROVE"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
+                Advanced / Custom Expression (Optional)
               </label>
               <textarea
-                rows={4}
+                rows={2}
                 value={config.condition?.expression ?? ""}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "condition", {
                     expression: e.target.value,
                   })
                 }
-                placeholder='{{steps.ai_agent.response}} !== ""'
+                placeholder='lastOutput.content && lastOutput.content.includes("APPROVE")'
                 className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
-              <p className="mt-1 text-[11px] text-zinc-500">
-                JavaScript expression evaluated at runtime to branch workflow.
-              </p>
             </div>
           </div>
         )}
@@ -432,18 +591,25 @@ export function NodePropertiesPanel({
         {/* 6. NOTIFY NODE */}
         {nodeType === "notify" && (
           <div className="space-y-4">
+            {data.userRole && data.userRole.toLowerCase() !== "owner" && (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+                🛡️ Notification configuration is restricted to organization Owners.
+              </div>
+            )}
+
             <div>
               <label className="mb-1.5 block text-xs font-medium text-zinc-300">
                 Channel / Provider
               </label>
               <select
                 value={config.notify?.channel ?? "Email"}
+                disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "notify", {
                     channel: e.target.value as "Email" | "Slack" | "Webhook",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               >
                 <option value="Email">Email</option>
                 <option value="Slack">Slack</option>
@@ -458,13 +624,14 @@ export function NodePropertiesPanel({
               <input
                 type="text"
                 value={config.notify?.recipient ?? ""}
+                readOnly={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "notify", {
                     recipient: e.target.value,
                   })
                 }
                 placeholder="user@example.com or #channel or URL"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               />
             </div>
 
@@ -475,14 +642,18 @@ export function NodePropertiesPanel({
               <textarea
                 rows={4}
                 value={config.notify?.message ?? ""}
+                readOnly={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "notify", {
                     message: e.target.value,
                   })
                 }
                 placeholder="Workflow execution finished: {{steps.ai_agent.response}}"
-                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
               />
+              <p className="mt-1 text-[10px] text-zinc-500">
+                Supports workflow variables like <code className="text-zinc-300">{"{{ trigger.data.email }}"}</code> or <code className="text-zinc-300">{"{{ steps.AI Agent.output }}"}</code>.
+              </p>
             </div>
           </div>
         )}
@@ -517,15 +688,15 @@ export function NodePropertiesPanel({
                   onUpdateNodeConfig(id, "approvalGate", {
                     requiredRole: e.target.value as
                       | "Owner"
-                      | "Admin"
-                      | "Member",
+                      | "Editor"
+                      | "Viewer",
                   })
                 }
                 className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               >
                 <option value="Owner">Owner</option>
-                <option value="Admin">Admin</option>
-                <option value="Member">Member</option>
+                <option value="Editor">Editor</option>
+                <option value="Viewer">Viewer</option>
               </select>
             </div>
 
@@ -548,6 +719,245 @@ export function NodePropertiesPanel({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Live Step Execution & Observability Section */}
+      {(data.executionStatus || data.liveStepRun) && (
+        <div className="space-y-3.5 border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Execution Output
+            </h3>
+            {data.executionStatus === "completed" && (
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/30">
+                ✓ Completed
+              </span>
+            )}
+            {data.executionStatus === "running" && (
+              <span className="rounded bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400 border border-blue-500/30 animate-pulse">
+                ▶ Running...
+              </span>
+            )}
+            {data.executionStatus === "paused" && (
+              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30 animate-pulse">
+                ⏸ Awaiting Approval
+              </span>
+            )}
+            {data.executionStatus === "failed" && (
+              <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-400 border border-rose-500/30">
+                ✕ Failed
+              </span>
+            )}
+          </div>
+
+          {/* AI Agent Output */}
+          {(nodeType === "ai_agent" || nodeType === ("llm_call" as NodeType)) &&
+            Boolean(data.liveStepRun?.output || data.liveStepRun?.status === "completed") && (
+              <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+                <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>
+                    Model:{" "}
+                    <span className="font-mono text-zinc-200">
+                      {String(
+                        (data.liveStepRun?.output as Record<string, unknown> | undefined)?.model ||
+                          config.aiAgent?.model ||
+                          "Gemini"
+                      )}
+                    </span>
+                  </span>
+                  {Boolean(
+                    (data.liveStepRun?.output as Record<string, unknown> | undefined)?.finishReason
+                  ) && (
+                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-zinc-400">
+                      {String(
+                        (data.liveStepRun?.output as Record<string, unknown> | undefined)
+                          ?.finishReason
+                      )}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
+                    Generated Response:
+                  </label>
+                  <div className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[11px] text-zinc-200 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
+                    {(() => {
+                      const out = data.liveStepRun?.output as
+                        | Record<string, unknown>
+                        | string
+                        | undefined;
+                      if (!out) return "Execution completed (empty output payload).";
+                      if (typeof out === "string") return out;
+                      const text =
+                        out.content ??
+                        out.text ??
+                        out.response ??
+                        out.raw ??
+                        out.message ??
+                        out.result;
+                      if (typeof text === "string" && text.length > 0) return text;
+                      return JSON.stringify(out, null, 2);
+                    })()}
+                  </div>
+                </div>
+                {Boolean(
+                  (data.liveStepRun?.output as Record<string, unknown> | undefined)?.tokensUsed
+                ) && (
+                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-1 border-t border-white/5">
+                    <span>Tokens:</span>
+                    <span>
+                      Prompt:{" "}
+                      {String(
+                        ((data.liveStepRun?.output as Record<string, unknown>)
+                          ?.tokensUsed as Record<string, number>)?.prompt || 0
+                      )}{" "}
+                      | Completion:{" "}
+                      {String(
+                        ((data.liveStepRun?.output as Record<string, unknown>)
+                          ?.tokensUsed as Record<string, number>)?.completion || 0
+                      )}{" "}
+                      | Total:{" "}
+                      {String(
+                        ((data.liveStepRun?.output as Record<string, unknown>)
+                          ?.tokensUsed as Record<string, number>)?.total || 0
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* HTTP Request Output */}
+          {nodeType === "http_request" && data.liveStepRun?.output && (
+            <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-emerald-400">
+                  HTTP {String(data.liveStepRun.output.status || 200)} {String(data.liveStepRun.output.statusText || "OK")}
+                </span>
+                {typeof data.liveStepRun.output.durationMs === "number" && (
+                  <span className="font-mono text-[10px] text-zinc-400">
+                    {data.liveStepRun.output.durationMs}ms
+                  </span>
+                )}
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-zinc-400 mb-1">Response Data:</label>
+                <pre className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[10px] text-blue-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                  {JSON.stringify(data.liveStepRun.output.data || data.liveStepRun.output, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Database Output */}
+          {nodeType === "database" && data.liveStepRun?.output && (
+            <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-mono text-zinc-300 font-medium">
+                  {String(data.liveStepRun.output.operation || "DB")} • {String(data.liveStepRun.output.table || config.database?.tableName || "table")}
+                </span>
+                <span className="text-[10px] text-emerald-400 font-mono">
+                  {String(data.liveStepRun.output.rowCount ?? data.liveStepRun.output.affected_rows ?? 1)} row(s)
+                </span>
+              </div>
+              {Boolean(data.liveStepRun.output.rows) && (
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">Result Rows:</label>
+                  <pre className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[10px] text-zinc-300 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                    {JSON.stringify(data.liveStepRun.output.rows, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Condition Output */}
+          {nodeType === "condition" && data.liveStepRun?.output && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400">Evaluated Branch:</span>
+                <span className="font-semibold text-emerald-400">
+                  {data.liveStepRun.output.evaluatedValue === true || data.liveStepRun.output.result === true || data.liveStepRun.output.selectedBranch === "true"
+                    ? "✓ TRUE"
+                    : "✕ FALSE"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Notify Output */}
+          {nodeType === "notify" && data.liveStepRun?.output && (
+            <div className="space-y-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-zinc-400">Channel:</span>
+                <span className="font-medium text-zinc-200">{String(data.liveStepRun.output.channel || config.notify?.channel || "Webhook")}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-zinc-400">Delivery ID:</span>
+                <span className="font-mono text-[10px] text-zinc-400 truncate max-w-[140px]">{String(data.liveStepRun.output.messageId || "confirmed")}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Approval Gate Output */}
+          {nodeType === "approval_gate" && (
+            <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
+              {data.executionStatus === "paused" ? (
+                <div className="space-y-2">
+                  <p className="text-amber-300 text-[11px] font-medium">
+                    ⏸ Workflow is paused at this step. Downstream steps have not executed.
+                  </p>
+                  {(data.userRole === "owner" || data.userRole === "editor") ? (
+                    <button
+                      type="button"
+                      onClick={() => onApproveStep?.(data.stepId, data.liveStepRun?.id)}
+                      className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-2 text-xs font-semibold text-white transition-all shadow-md flex items-center justify-center gap-1.5"
+                    >
+                      Approve & Continue ✓
+                    </button>
+                  ) : (
+                    <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] text-amber-300">
+                      🛡️ Approval requires organization Owner or Editor privileges.
+                    </div>
+                  )}
+                </div>
+              ) : data.liveStepRun?.approved_by ? (
+                <div className="space-y-1 text-[11px]">
+                  <div className="text-emerald-400 font-medium">✓ Step Approved</div>
+                  <div className="text-[10px] text-zinc-400 font-mono">
+                    By: {data.liveStepRun.approved_by}
+                  </div>
+                  {data.liveStepRun.approved_at && (
+                    <div className="text-[10px] text-zinc-500">
+                      At: {new Date(data.liveStepRun.approved_at).toLocaleTimeString()}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Execution Error (if failed) */}
+          {data.executionError && (
+            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300">
+              <span className="font-semibold block mb-0.5">Error:</span>
+              <span className="font-mono text-[11px] break-all">{data.executionError}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Delete Node Action */}
+      <div className="border-t border-white/10 pt-4 mt-auto">
+        <button
+          onClick={() => onDeleteNode(id)}
+          className="w-full rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/50 transition-all flex items-center justify-center gap-2"
+        >
+          🗑️ Delete Node
+        </button>
+        <p className="mt-1.5 text-center text-[10px] text-zinc-500">
+          Or press Delete / Backspace key
+        </p>
       </div>
     </aside>
   );

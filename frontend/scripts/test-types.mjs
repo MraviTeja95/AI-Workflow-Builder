@@ -1,25 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-function loadEnv() {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  const content = fs.readFileSync(envPath, "utf-8");
-  const env = {};
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#")) {
-      const idx = trimmed.indexOf("=");
-      if (idx !== -1) {
-        const key = trimmed.slice(0, idx).trim();
-        const value = trimmed.slice(idx + 1).trim();
-        env[key] = value;
-      }
-    }
-  }
-  return env;
-}
+
 
 const env = loadEnv();
+void env;
+
 const endpoint =
   env.HASURA_GRAPHQL_ENDPOINT ||
   "https://zggynlwwpraxjmbawiym.hasura.ap-southeast-1.nhost.run/v1/graphql";

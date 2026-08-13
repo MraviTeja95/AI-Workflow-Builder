@@ -69,7 +69,7 @@ export async function GET(request: Request) {
         quota_limit: primaryOrg.quota_limit,
         quota_used: primaryOrg.quota_used,
       },
-      role: memberRecord?.role || "member",
+      role: memberRecord?.role || "viewer",
     });
   } catch (error) {
     const err = error as Error;

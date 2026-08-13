@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeGraphQL, WORKFLOW_QUERIES } from "@/lib/hasura";
+import { extractUserId, getUserMembership } from "@/lib/auth";
 import {
   type WorkflowNodeData,
   type NodeType,
@@ -78,6 +79,25 @@ export async function GET(
       );
     }
 
+    // 1. Authenticate caller server-side
+    const userId = extractUserId(request);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing authenticated session context." },
+        { status: 401 }
+      );
+    }
+
+    // 2. Resolve caller's organization from database
+    const membership = await getUserMembership(userId);
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Access denied: You do not belong to any organization." },
+        { status: 403 }
+      );
+    }
+
+    // 3. Fetch workflow from database
     const res = await executeGraphQL<{
       workflows_by_pk: DatabaseWorkflow | null;
     }>(WORKFLOW_QUERIES.GET_WORKFLOW_BY_ID, { id });
@@ -91,10 +111,18 @@ export async function GET(
       );
     }
 
+    // 4. Layer 1 Tenant Isolation Check: Cross-Org rejection
+    if (workflow.org_id !== membership.orgId) {
+      return NextResponse.json(
+        { error: "Access denied: You do not have permission to view workflows in another organization." },
+        { status: 403 }
+      );
+    }
+
     const nodes: Node<WorkflowNodeData>[] = [];
     const edges: Edge[] = [];
 
-    // 1. Reconstruct Trigger Nodes from workflow_triggers
+    // Reconstruct Trigger Nodes from workflow_triggers
     workflow.workflow_triggers.forEach((trigger, idx) => {
       const triggerConfig = trigger.config || {};
       const clientNodeId = triggerConfig.client_node_id || `trigger-${idx + 1}`;
@@ -105,6 +133,16 @@ export async function GET(
           ? "Schedule"
           : rawType.charAt(0).toUpperCase() + rawType.slice(1).toLowerCase();
 
+      // Sanitize secret for non-owners
+      const rawNodeConfig = (triggerConfig.node_config || {}) as {
+        trigger?: { webhookSecret?: string; triggerType?: string };
+        [key: string]: unknown;
+      };
+      const safeNodeConfig = JSON.parse(JSON.stringify(rawNodeConfig));
+      if (membership.role.toLowerCase() !== "owner" && safeNodeConfig.trigger?.webhookSecret) {
+        safeNodeConfig.trigger.webhookSecret = "••••••••";
+      }
+
       nodes.push({
         id: clientNodeId,
         type: "workflowNode",
@@ -113,14 +151,17 @@ export async function GET(
           label: "Trigger",
           icon: "⚡",
           nodeType: "trigger",
-          config: triggerConfig.node_config || {
-            trigger: {
-              triggerType: triggerTypeCapitalized as
-                | "Manual"
-                | "Webhook"
-                | "Schedule",
-            },
-          },
+          userRole: membership.role,
+          config: safeNodeConfig.trigger
+            ? safeNodeConfig
+            : {
+                trigger: {
+                  triggerType: triggerTypeCapitalized as
+                    | "Manual"
+                    | "Webhook"
+                    | "Schedule",
+                },
+              },
         },
       });
 
@@ -138,7 +179,7 @@ export async function GET(
       });
     });
 
-    // 2. Reconstruct Action Nodes from workflow_steps
+    // Reconstruct Action Nodes from workflow_steps
     workflow.workflow_steps.forEach((step, idx) => {
       const stepConfig = step.config || {};
       const clientNodeId = stepConfig.client_node_id || step.id;
@@ -159,6 +200,7 @@ export async function GET(
           icon: template.icon,
           nodeType: nodeType,
           config: stepConfig.node_config || template.config,
+          stepId: step.id,
         },
       });
 

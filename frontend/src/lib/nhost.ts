@@ -5,3 +5,4 @@ export const nhost = new NhostClient({
     process.env.NEXT_PUBLIC_NHOST_SUBDOMAIN || "zggynlwwpraxjmbawiym",
   region: process.env.NEXT_PUBLIC_NHOST_REGION || "ap-southeast-1",
 });
+

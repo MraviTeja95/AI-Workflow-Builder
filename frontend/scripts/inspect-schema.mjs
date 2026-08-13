@@ -1,29 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-function loadEnv() {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  if (!fs.existsSync(envPath)) {
-    console.error("❌ frontend/.env.local file not found.");
-    process.exit(1);
-  }
-  const content = fs.readFileSync(envPath, "utf-8");
-  const env = {};
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#")) {
-      const idx = trimmed.indexOf("=");
-      if (idx !== -1) {
-        const key = trimmed.slice(0, idx).trim();
-        const value = trimmed.slice(idx + 1).trim();
-        env[key] = value;
-      }
-    }
-  }
-  return env;
-}
+
 
 const env = loadEnv();
+void env;
+
 const endpoint =
   env.HASURA_GRAPHQL_ENDPOINT ||
   env.NHOST_GRAPHQL_URL ||

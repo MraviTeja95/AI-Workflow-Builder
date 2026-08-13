@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { executeGraphQL, WORKFLOW_QUERIES } from "@/lib/hasura";
 import {
-  executeGraphQL,
-  WORKFLOW_QUERIES,
-  DEFAULT_ORGANIZATION_ID,
-  DEFAULT_USER_ID,
-} from "@/lib/hasura";
+  extractUserId,
+  getUserMembership,
+  validatePrivilegedOperations,
+  getWorkflowOrg,
+} from "@/lib/auth";
 import type { Node, Edge } from "@xyflow/react";
 import type { WorkflowNodeData } from "@/types/workflow";
 
@@ -13,6 +14,8 @@ interface SaveWorkflowRequestBody {
   name: string;
   nodes: Node<WorkflowNodeData>[];
   edges: Edge[];
+  session_variables?: Record<string, string>;
+  userId?: string;
 }
 
 function mapNodeTypeToBackend(uiType: string): string {
@@ -36,10 +39,36 @@ function mapNodeTypeToBackend(uiType: string): string {
 
 export async function POST(request: Request) {
   try {
-    const body: SaveWorkflowRequestBody = await request.json();
+    const body: SaveWorkflowRequestBody = await request.json().catch(() => ({}));
     const { id, name, nodes = [], edges = [] } = body;
 
-    // 1. Validate workflow name
+    // 1. Authenticate caller server-side
+    const userId = extractUserId(request, body as unknown as Record<string, unknown>);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing authenticated session context." },
+        { status: 401 }
+      );
+    }
+
+    // 2. Resolve user's organization membership and role directly from database
+    const membership = await getUserMembership(userId);
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Access denied: You do not belong to any organization." },
+        { status: 403 }
+      );
+    }
+
+    // Layer 1 RBAC: Viewer cannot create or modify workflows
+    if (membership.role === "viewer") {
+      return NextResponse.json(
+        { error: "Access denied: Viewers are not permitted to create or modify workflows." },
+        { status: 403 }
+      );
+    }
+
+    // 3. Validate workflow name
     const trimmedName = name?.trim();
     if (!trimmedName) {
       return NextResponse.json(
@@ -51,41 +80,25 @@ export async function POST(request: Request) {
     let workflowId = id;
     let workflowRecord: Record<string, unknown>;
 
-    // 2. Create or Update Workflow Record
+    // 4. Verify existing workflow ownership for updates (Layer 1 Isolation)
     if (workflowId) {
-      const updateRes = await executeGraphQL<{
-        update_workflows_by_pk: Record<string, unknown> | null;
-      }>(WORKFLOW_QUERIES.UPDATE_WORKFLOW, {
-        id: workflowId,
-        name: trimmedName,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (!updateRes.update_workflows_by_pk) {
+      const existingWf = await getWorkflowOrg(workflowId);
+      if (!existingWf) {
         return NextResponse.json(
-          { error: `Workflow with ID ${workflowId} was not found to update.` },
+          { error: `Workflow with ID "${workflowId}" was not found.` },
           { status: 404 }
         );
       }
 
-      workflowRecord = updateRes.update_workflows_by_pk;
-    } else {
-      const createRes = await executeGraphQL<{
-        insert_workflows_one: Record<string, unknown>;
-      }>(WORKFLOW_QUERIES.CREATE_WORKFLOW, {
-        object: {
-          name: trimmedName,
-          org_id: DEFAULT_ORGANIZATION_ID,
-          created_by: DEFAULT_USER_ID,
-          updated_at: new Date().toISOString(),
-        },
-      });
-
-      workflowRecord = createRes.insert_workflows_one;
-      workflowId = workflowRecord.id as string;
+      if (existingWf.org_id !== membership.orgId) {
+        return NextResponse.json(
+          { error: "Access denied: You do not have permission to modify workflows in another organization." },
+          { status: 403 }
+        );
+      }
     }
 
-    // 3. Prepare Step Rows (filter out trigger nodes as they persist to workflow_triggers)
+    // 5. Prepare Step Rows
     const actionNodes = nodes.filter(
       (node) => node.data.nodeType !== "trigger"
     );
@@ -119,13 +132,7 @@ export async function POST(request: Request) {
       };
     });
 
-    // 4. Synchronize Workflow Steps
-    await executeGraphQL(WORKFLOW_QUERIES.SYNC_WORKFLOW_STEPS, {
-      workflowId,
-      steps: stepRows,
-    });
-
-    // 5. Synchronize Workflow Triggers
+    // 6. Prepare Trigger Rows
     const triggerNodes = nodes.filter(
       (node) => node.data.nodeType === "trigger"
     );
@@ -162,6 +169,64 @@ export async function POST(request: Request) {
       };
     });
 
+    // 7. Layer 2 Security: Verify Privileged Operations (db_write, notify, webhook trigger)
+    const privCheck = validatePrivilegedOperations(stepRows, triggerRows, membership.role);
+    if (!privCheck.allowed) {
+      return NextResponse.json(
+        { error: privCheck.reason },
+        { status: 403 }
+      );
+    }
+
+    // 8. Create or Update Workflow Record strictly under caller's organization
+    if (workflowId) {
+      const updateRes = await executeGraphQL<{
+        update_workflows_by_pk: Record<string, unknown> | null;
+      }>(WORKFLOW_QUERIES.UPDATE_WORKFLOW, {
+        id: workflowId,
+        name: trimmedName,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (!updateRes.update_workflows_by_pk) {
+        return NextResponse.json(
+          { error: `Workflow with ID ${workflowId} was not found to update.` },
+          { status: 404 }
+        );
+      }
+
+      workflowRecord = updateRes.update_workflows_by_pk;
+    } else {
+      const createRes = await executeGraphQL<{
+        insert_workflows_one: Record<string, unknown>;
+      }>(WORKFLOW_QUERIES.CREATE_WORKFLOW, {
+        object: {
+          name: trimmedName,
+          org_id: membership.orgId,
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+      });
+
+      workflowRecord = createRes.insert_workflows_one;
+      workflowId = workflowRecord.id as string;
+    }
+
+    // Attach newly generated workflowId to step and trigger rows
+    stepRows.forEach((s) => {
+      s.workflow_id = workflowId;
+    });
+    triggerRows.forEach((t) => {
+      t.workflow_id = workflowId;
+    });
+
+    // 9. Synchronize Workflow Steps
+    await executeGraphQL(WORKFLOW_QUERIES.SYNC_WORKFLOW_STEPS, {
+      workflowId,
+      steps: stepRows,
+    });
+
+    // 10. Synchronize Workflow Triggers
     await executeGraphQL(WORKFLOW_QUERIES.SYNC_WORKFLOW_TRIGGERS, {
       workflowId,
       triggers: triggerRows,
@@ -177,6 +242,56 @@ export async function POST(request: Request) {
     console.error("Error saving workflow:", err);
     return NextResponse.json(
       { error: err.message || "Failed to save workflow." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const userId = extractUserId(request);
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized: Missing authenticated session context." },
+        { status: 401 }
+      );
+    }
+
+    const membership = await getUserMembership(userId);
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Access denied: You do not belong to any organization." },
+        { status: 403 }
+      );
+    }
+
+    const res = await executeGraphQL<{
+      workflows: Array<Record<string, unknown>>;
+    }>(
+      `
+        query GetOrgWorkflows($orgId: uuid!) {
+          workflows(where: { org_id: { _eq: $orgId } }, order_by: { updated_at: desc }) {
+            id
+            name
+            description
+            org_id
+            created_by
+            created_at
+            updated_at
+          }
+        }
+      `,
+      { orgId: membership.orgId }
+    );
+
+    return NextResponse.json({
+      workflows: res.workflows || [],
+    });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error listing workflows:", err);
+    return NextResponse.json(
+      { error: err.message || "Failed to list workflows." },
       { status: 500 }
     );
   }

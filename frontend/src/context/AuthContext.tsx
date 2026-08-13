@@ -12,10 +12,12 @@ import {
   useUserData,
   useAuthenticated,
   useAuthenticationStatus,
+  useAccessToken,
   useSignInEmailPassword,
   useSignOut,
 } from "@nhost/react";
 import { nhost } from "@/lib/nhost";
+import { useMounted } from "@/hooks/useMounted";
 
 export interface AuthUser {
   id: string;
@@ -36,6 +38,7 @@ export interface AuthContextType {
   role: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  accessToken: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -44,9 +47,11 @@ export interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function AuthStateProvider({ children }: { children: React.ReactNode }) {
+  const isMounted = useMounted();
   const nhostUser = useUserData();
-  const isAuthenticated = useAuthenticated();
-  const { isLoading: isAuthLoading } = useAuthenticationStatus();
+  const isNhostAuthenticated = useAuthenticated();
+  const { isLoading: isNhostAuthLoading } = useAuthenticationStatus();
+  const accessToken = useAccessToken();
   const { signInEmailPassword } = useSignInEmailPassword();
   const { signOut } = useSignOut();
 
@@ -64,41 +69,33 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
         setOrganization(data.organization);
       }
       if (data.role) {
-        setRole(data.role);
+        setRole(data.role || null);
       }
     } catch (err) {
       console.error("Failed to fetch organization details:", err);
     }
   }, []);
 
+  // Synchronize organization details whenever authenticated user changes
   useEffect(() => {
     let isCurrent = true;
 
-    async function syncOrg() {
-      if (nhostUser && nhostUser.id) {
-        try {
-          const res = await fetch(`/api/auth/me?userId=${nhostUser.id}`);
-          if (!res.ok) return;
-          const data = await res.json();
-          if (isCurrent) {
-            setOrganization(data.organization || null);
-            setRole(data.role || null);
+    if (isMounted && !isNhostAuthLoading && isNhostAuthenticated && nhostUser?.id) {
+      fetch(`/api/auth/me?userId=${nhostUser.id}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && isCurrent) {
+            if (data.organization) setOrganization(data.organization);
+            if (data.role) setRole(data.role || null);
           }
-        } catch (err) {
-          console.error("Failed to fetch organization details:", err);
-        }
-      } else if (isCurrent) {
-        setOrganization(null);
-        setRole(null);
-      }
+        })
+        .catch((err) => console.error("Sync org error:", err));
     }
-
-    syncOrg();
 
     return () => {
       isCurrent = false;
     };
-  }, [nhostUser]);
+  }, [isMounted, isNhostAuthLoading, isNhostAuthenticated, nhostUser?.id]);
 
   const login = async (email: string, password: string) => {
     const result = await signInEmailPassword(email, password);
@@ -122,13 +119,22 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const user: AuthUser | null = nhostUser
-    ? {
-        id: nhostUser.id,
-        email: nhostUser.email || undefined,
-        displayName: nhostUser.displayName || undefined,
-      }
-    : null;
+  // Lifecycle states:
+  // 1. isLoading: True during initial SSR and while Nhost is checking/refreshing token
+  const isLoading = !isMounted || isNhostAuthLoading;
+
+  // 2. isAuthenticated: True ONLY when hydration is complete and Nhost confirms signedIn with valid token
+  const isAuthenticated = isMounted && !isNhostAuthLoading ? (isNhostAuthenticated && Boolean(accessToken)) : false;
+
+  // 3. user: Populated when authenticated
+  const user: AuthUser | null =
+    isAuthenticated && nhostUser
+      ? {
+          id: nhostUser.id,
+          email: nhostUser.email || undefined,
+          displayName: nhostUser.displayName || undefined,
+        }
+      : null;
 
   return (
     <AuthContext.Provider
@@ -136,8 +142,9 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
         user,
         organization,
         role,
-        isLoading: isAuthLoading,
+        isLoading,
         isAuthenticated,
+        accessToken: isAuthenticated ? accessToken : null,
         login,
         logout,
         refreshSession,
@@ -163,3 +170,4 @@ export function useAuth() {
   }
   return context;
 }
+
