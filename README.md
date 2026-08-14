@@ -231,50 +231,7 @@ ai-workflow-builder/
 
 ---
 
-## Environment Variables
 
-Configure `.env.local` using the template below:
-
-```env
-# ==============================================================================
-# Nhost & Hasura Configuration (Client & Server)
-# ==============================================================================
-NEXT_PUBLIC_NHOST_SUBDOMAIN=your_nhost_subdomain
-NEXT_PUBLIC_NHOST_REGION=your_nhost_region
-NHOST_SUBDOMAIN=your_nhost_subdomain
-NHOST_REGION=your_nhost_region
-NHOST_GRAPHQL_URL=https://your_nhost_subdomain.graphql.your_nhost_region.nhost.run/v1
-HASURA_GRAPHQL_ENDPOINT=https://your_nhost_subdomain.hasura.your_nhost_region.nhost.run/v1/graphql
-
-# Server-Only Hasura Admin Secret
-HASURA_GRAPHQL_ADMIN_SECRET=your_hasura_admin_secret_here
-
-# Default Tenant Organization IDs (Optional fallback)
-DEFAULT_ORGANIZATION_ID=00000000-0000-0000-0000-000000000000
-DEFAULT_USER_ID=00000000-0000-0000-0000-000000000000
-
-# ==============================================================================
-# AI Provider (Google Gemini API) - Server-Only Secret
-# ==============================================================================
-GEMINI_API_KEY=your_google_gemini_api_key_here
-
-# ==============================================================================
-# Email Notification Provider (Resend) - Server-Only Secret
-# ==============================================================================
-RESEND_API_KEY=re_your_resend_api_key_here
-EMAIL_FROM=onboarding@resend.dev
-
-# ==============================================================================
-# Demo Account Configuration (Server-Only)
-# ==============================================================================
-DEMO_USER_EMAIL=demo@workflowbuilder.dev
-DEMO_USER_PASSWORD=your_demo_password_here
-```
-
-> [!NOTE]
-> Never commit `.env.local` or expose server secrets in client code. Variables prefixed with `NEXT_PUBLIC_` are safe for browser exposure.
-
----
 
 ## Testing & Quality Assurance
 
