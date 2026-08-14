@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
-import type { Node } from "@xyflow/react";
+import React, { useMemo } from "react";
+import type { Node, Edge } from "@xyflow/react";
 import type { WorkflowNodeData, StepRun, NodeType } from "@/types/workflow";
+import { getTopologicallySortedNodes } from "@/lib/graphOrder";
 
 interface ExecutionTimelineProps {
   nodes: Node<WorkflowNodeData>[];
+  edges?: Edge[];
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
   onApproveStep?: (stepId?: string, stepRunId?: string) => void;
@@ -17,193 +19,215 @@ interface ExecutionTimelineProps {
 
 export function ExecutionTimeline({
   nodes,
+  edges = [],
   selectedNodeId,
   onSelectNode,
   onApproveStep,
   userRole,
   isRunning,
   workflowStatus,
-  activeRunId,
 }: ExecutionTimelineProps) {
-  if (!activeRunId && workflowStatus === "idle") {
-    return null;
-  }
+  const orderedNodes = useMemo(
+    () => (nodes && nodes.length > 0 ? getTopologicallySortedNodes(nodes, edges) : []),
+    [nodes, edges]
+  );
+
+  // If there are no nodes, do not render timeline
+  if (!nodes || nodes.length === 0 || orderedNodes.length === 0) return null;
+
+  const totalSteps = orderedNodes.length;
+  const completedSteps = orderedNodes.filter(
+    (n) => n.data.executionStatus === "completed" || n.data.executionStatus === "skipped"
+  ).length;
+  const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
   const isOwnerOrEditor =
     userRole?.toLowerCase() === "owner" || userRole?.toLowerCase() === "editor";
 
-  const getStepSummary = (node: Node<WorkflowNodeData>, stepRun?: StepRun) => {
-    if (!stepRun || !stepRun.output) return null;
+  const getStepSummary = (node: Node<WorkflowNodeData>, stepRun?: StepRun): string | null => {
+    if (node.data.nodeType === "trigger") {
+      const ch = (node.data.config?.trigger?.triggerType as string) || "Manual";
+      return `${ch} Trigger`;
+    }
+    if (!stepRun?.output) return null;
     const type: NodeType = node.data.nodeType;
+    const out = stepRun.output;
 
     switch (type) {
       case "ai_agent": {
         const text =
-          stepRun.output.content ||
-          stepRun.output.text ||
-          stepRun.output.response ||
-          (typeof stepRun.output === "string" ? stepRun.output : null);
-        if (typeof text === "string") {
-          return text.length > 60 ? `${text.slice(0, 60)}...` : text;
-        }
-        return "AI response generated";
+          out.content ?? out.text ?? out.response ??
+          (typeof out === "string" ? out : null);
+        if (typeof text === "string") return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+        return "AI generated";
       }
       case "http_request": {
-        const status = stepRun.output.status || 200;
-        const method = (stepRun.input?.method as string) || "HTTP";
-        return `${method} -> ${status} OK`;
+        const s = out.status || 200;
+        const m = (stepRun.input?.method as string) || "HTTP";
+        return `${m} → ${s}`;
       }
       case "database": {
-        const op = stepRun.output.operation || "DB";
-        const rows = stepRun.output.rowCount ?? stepRun.output.affected_rows ?? 1;
-        return `${op} -> ${rows} row(s) affected`;
+        const op = out.operation || "DB";
+        const rows = out.rowCount ?? out.affected_rows ?? 1;
+        return `${op} → ${rows} row(s)`;
       }
       case "condition": {
-        const val =
-          stepRun.output.evaluatedValue ??
-          stepRun.output.result ??
-          stepRun.output.selectedBranch;
-        return `Evaluated -> Branch ${val === true || val === "true" ? "TRUE" : "FALSE"}`;
+        const val = out.evaluatedValue ?? out.result ?? out.selectedBranch;
+        return `Branch → ${val === true || val === "true" ? "TRUE" : "FALSE"}`;
       }
       case "notify": {
-        const channel = stepRun.output.channel || "Webhook";
-        const msgId = stepRun.output.messageId || "sent";
-        return `${channel} delivered (${msgId})`;
+        const ch = out.channel || "Email";
+        return `${ch} delivered`;
       }
-      case "approval_gate": {
-        if (stepRun.status === "completed") {
-          return `Approved by ${stepRun.approved_by ? stepRun.approved_by.slice(0, 8) + "..." : "Authorized User"}`;
-        }
-        return "Waiting for manager review";
-      }
+      case "approval_gate":
+        return stepRun.status === "completed"
+          ? "Approved"
+          : "Awaiting approval";
       default:
         return null;
     }
   };
 
-  return (
-    <div className="w-full border-t border-white/10 bg-[#0e0e0e]/95 backdrop-blur-md px-5 py-3 transition-all">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Execution Timeline
+  const renderStepStatusPill = (status?: string, isCondition?: boolean, liveStepRun?: StepRun) => {
+    if (status === "running") {
+      return (
+        <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
           </span>
+          Running
+        </span>
+      );
+    }
+    if (status === "completed") {
+      if (isCondition) {
+        const isTrue =
+          liveStepRun?.output?.evaluatedValue === true ||
+          liveStepRun?.output?.result === true ||
+          liveStepRun?.output?.selectedBranch === "true" ||
+          liveStepRun?.output?.branch === "true";
+        return (
+          <span className={`text-[10px] font-bold ${isTrue ? "text-emerald-400" : "text-rose-400"}`}>
+            {isTrue ? "✓ TRUE" : "✓ FALSE"}
+          </span>
+        );
+      }
+      return <span className="text-[10px] font-semibold text-emerald-400">✓ Done</span>;
+    }
+    if (status === "paused") {
+      return <span className="text-[10px] font-semibold text-amber-300">⏸ Waiting</span>;
+    }
+    if (status === "failed") {
+      return <span className="text-[10px] font-semibold text-rose-400">✕ Failed</span>;
+    }
+    if (status === "skipped") {
+      return <span className="text-[10px] text-zinc-600 line-through">Skipped</span>;
+    }
+    return <span className="text-[10px] text-zinc-500 font-medium">○ Pending</span>;
+  };
 
+  return (
+    <div className="w-full border-t border-white/[0.06] bg-[#0c0c0e] px-5 py-2.5 shrink-0 select-none">
+      {/* Execution Status Header Row */}
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+            Execution
+          </span>
+          <span className="text-[11px] font-mono text-zinc-300 font-medium">
+            {completedSteps} / {totalSteps}
+          </span>
+          <span className="text-[11px] font-mono text-blue-400 font-semibold">
+            {progressPercent}%
+          </span>
           {workflowStatus === "running" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 text-[11px] font-medium text-blue-400">
+            <span className="flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-400">
               <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-ping" />
-              Running Steps...
+              Executing
             </span>
           )}
-
           {workflowStatus === "paused" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[11px] font-medium text-amber-300 animate-pulse">
-              ⏸ Paused at Approval Gate
+            <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+              ⏸ Paused
             </span>
           )}
-
           {workflowStatus === "completed" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-              ✓ Completed Successfully
+            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+              ✓ Completed
             </span>
           )}
-
           {workflowStatus === "failed" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 text-[11px] font-medium text-rose-400">
-              ✕ Execution Failed
+            <span className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-400">
+              ✕ Failed
             </span>
           )}
         </div>
-
-        {activeRunId && (
-          <span className="text-[11px] font-mono text-zinc-500 truncate max-w-[240px]">
-            Run ID: {activeRunId}
-          </span>
-        )}
       </div>
 
-      {/* Horizontal Step Sequence */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-thin">
-        {nodes.map((node, index) => {
+      {/* Thin live progress bar */}
+      <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden mb-2.5">
+        <div
+          className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300 ease-out rounded-full"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
+
+      {/* Horizontal step sequence */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+        {orderedNodes.map((node, index) => {
           const stepRun = node.data.liveStepRun;
           const status = node.data.executionStatus;
           const isSelected = selectedNodeId === node.id;
           const summary = getStepSummary(node, stepRun);
           const isPaused = status === "paused";
+          const isCondition = node.data.nodeType === "condition";
+
+          const cardClass = isSelected
+            ? "border-blue-500/60 bg-blue-500/8 ring-1 ring-blue-500/20"
+            : isPaused
+            ? "border-amber-500/40 bg-amber-500/6 ring-1 ring-amber-500/20"
+            : status === "completed"
+            ? "border-emerald-500/25 bg-emerald-500/[0.03] hover:border-emerald-500/40"
+            : status === "running"
+            ? "border-blue-500/40 bg-blue-500/6"
+            : status === "failed"
+            ? "border-rose-500/30 bg-rose-500/4"
+            : "border-white/[0.06] bg-white/[0.015] opacity-60 hover:opacity-90 hover:border-white/12";
 
           return (
             <React.Fragment key={node.id}>
               {index > 0 && (
-                <div className="h-[1px] w-4 shrink-0 bg-white/10" />
+                <div className="h-px w-3 shrink-0 bg-white/10" />
               )}
 
               <div
                 onClick={() => onSelectNode(node.id)}
-                className={`group shrink-0 cursor-pointer rounded-xl border p-2.5 transition-all min-w-[170px] max-w-[220px] ${
-                  isSelected
-                    ? "border-blue-500 bg-blue-500/10 ring-1 ring-blue-500/50 shadow-md"
-                    : isPaused
-                    ? "border-amber-500/60 bg-amber-500/10 ring-1 ring-amber-500/30 animate-pulse"
-                    : status === "completed"
-                    ? "border-emerald-500/30 bg-white/[0.02] hover:border-emerald-500/60"
-                    : status === "failed"
-                    ? "border-rose-500/30 bg-rose-500/5 hover:border-rose-500/60"
-                    : status === "running"
-                    ? "border-blue-500/40 bg-blue-500/5 ring-1 ring-blue-500/20"
-                    : "border-white/10 bg-white/[0.01] opacity-70 hover:opacity-100 hover:border-white/20"
-                }`}
+                className={`group shrink-0 cursor-pointer rounded-xl border px-3 py-2 transition-all duration-150 min-w-[145px] max-w-[190px] ${cardClass}`}
               >
+                {/* Header: icon + name + status pill */}
                 <div className="flex items-center justify-between gap-1.5 mb-1">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="text-xs">{node.data.icon}</span>
-                    <span className="text-xs font-medium text-white truncate">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs shrink-0 leading-none">{node.data.icon}</span>
+                    <span className="text-[11px] font-medium text-white truncate">
                       {node.data.label}
                     </span>
                   </div>
-
-                  {/* Status Indicator */}
-                  {status === "completed" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-emerald-400 bg-emerald-500/20 rounded px-1.5 py-0.2">
-                      ✓ Done
-                    </span>
-                  )}
-                  {status === "running" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-blue-400 bg-blue-500/20 rounded px-1.5 py-0.2 animate-pulse">
-                      ▶ Running
-                    </span>
-                  )}
-                  {status === "paused" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-amber-300 bg-amber-500/20 rounded px-1.5 py-0.2">
-                      ⏸ Waiting
-                    </span>
-                  )}
-                  {status === "failed" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-rose-400 bg-rose-500/20 rounded px-1.5 py-0.2">
-                      ✕ Failed
-                    </span>
-                  )}
-                  {status === "skipped" && (
-                    <span className="shrink-0 text-[10px] font-semibold text-zinc-500 bg-white/5 rounded px-1.5 py-0.2">
-                      ⏭ Skipped
-                    </span>
-                  )}
-                  {!status && (
-                    <span className="shrink-0 text-[10px] font-medium text-zinc-600">
-                      ○ Upcoming
-                    </span>
-                  )}
+                  <div className="shrink-0">
+                    {renderStepStatusPill(status, isCondition, stepRun)}
+                  </div>
                 </div>
 
-                {/* Subtitle / summary info */}
+                {/* Summary / Result preview */}
                 {summary && (
-                  <p className="text-[10px] text-zinc-400 truncate mt-0.5 font-mono">
+                  <p className="text-[10px] text-zinc-400 truncate font-mono mt-0.5">
                     {summary}
                   </p>
                 )}
 
-                {/* Inline Action for Approval Gate */}
+                {/* Inline approval action when paused */}
                 {isPaused && (
-                  <div className="mt-2 pt-1.5 border-t border-amber-500/20 flex flex-col gap-1">
+                  <div className="mt-1.5 pt-1 border-t border-amber-500/20">
                     {isOwnerOrEditor ? (
                       <button
                         type="button"
@@ -212,13 +236,13 @@ export function ExecutionTimeline({
                           e.stopPropagation();
                           onApproveStep?.(node.data.stepId, stepRun?.id);
                         }}
-                        className="w-full rounded bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-1 text-[11px] font-semibold text-white transition-all shadow cursor-pointer flex items-center justify-center gap-1"
+                        className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-0.5 text-[10px] font-bold text-white transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1"
                       >
-                        Approve & Continue ✓
+                        Approve & Continue
                       </button>
                     ) : (
-                      <span className="text-[9px] text-amber-300/80 italic">
-                        Requires Owner/Editor role
+                      <span className="text-[9px] text-amber-400/60 block text-center">
+                        Requires Owner / Editor
                       </span>
                     )}
                   </div>

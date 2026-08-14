@@ -185,7 +185,8 @@ async function runNotifyTests() {
   // -------------------------------------------------------------------
   // TEST 3: Email Channel Syntax Validation & Delivery
   // -------------------------------------------------------------------
-  console.log("\n▶ TEST 3: Email channel syntax validation and delivery receipt");
+  console.log("\n▶ TEST 3: Email channel delivery & credential validation");
+  const hasEmailCreds = !!(env.RESEND_API_KEY && env.EMAIL_FROM);
   const emailWfRes = await fetch(`${APP_URL}/api/workflows`, {
     method: "POST",
     headers: ownerHeaders,
@@ -208,8 +209,8 @@ async function runNotifyTests() {
             config: {
               notify: {
                 channel: "Email",
-                recipient: "team.alert@example.com",
-                message: "Deployment successful to production.",
+                recipient: env.TEST_EMAIL_RECIPIENT || "delivered@resend.dev",
+                message: "Deployment successful to production via Resend.",
               },
             },
           },
@@ -230,7 +231,25 @@ async function runNotifyTests() {
   });
 
   const runEmailData = await runEmailRes.json();
-  assertTest("Email workflow run completed", runEmailRes.status === 200 && runEmailData.status === "completed", `Status: ${runEmailData.status}`);
+  if (hasEmailCreds) {
+    assertTest("Email workflow run completed via Resend", runEmailRes.status === 200 && runEmailData.status === "completed", `Status: ${runEmailData.status}`);
+    const emailStepRunRes = await queryGraphQLAdmin(`
+      query GetEmailStepRun($runId: uuid!) {
+        step_runs(where: { workflow_run_id: { _eq: $runId } }) {
+          id
+          status
+          output
+          error
+        }
+      }
+    `, { runId: runEmailData.workflow_run_id });
+    const emailStepRun = emailStepRunRes.data?.step_runs?.[0];
+    const isRealMsgId = emailStepRun?.output?.messageId && !emailStepRun?.output?.messageId.startsWith("notif_");
+    assertTest("Email step output contains provider message ID", !!isRealMsgId, `MessageId: ${emailStepRun?.output?.messageId}`);
+    assertTest("Email step output details provider is Resend", emailStepRun?.output?.details?.provider === "Resend", `Provider: ${emailStepRun?.output?.details?.provider}`);
+  } else {
+    assertTest("Missing credentials correctly fails email step without claiming fake delivery", runEmailData.status === "failed" && String(runEmailData.message || "").includes("Email notification is not configured"), `Real email integration not configured (Message: ${runEmailData.message})`);
+  }
 
   // -------------------------------------------------------------------
   // TEST 4: Slack Channel Notification Delivery
@@ -757,8 +776,8 @@ async function runNotifyTests() {
             nodeType: "notify",
             config: {
               notify: {
-                channel: "Email",
-                recipient: "recipient@test.com",
+                channel: "Webhook",
+                recipient: "http://localhost:3000/api/test-http-target?stage=notify",
                 message: "Initial notification",
               },
             },

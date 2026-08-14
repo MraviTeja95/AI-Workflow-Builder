@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Node } from "@xyflow/react";
 import type {
   WorkflowNodeData,
@@ -18,6 +19,9 @@ interface NodePropertiesPanelProps {
   onDeselectNode: () => void;
   onDeleteNode: (nodeId: string) => void;
   onApproveStep?: (stepId?: string, stepRunId?: string) => void;
+  onSave?: () => void;
+  saveStatus?: "idle" | "saving" | "saved" | "error";
+  isSavingDisabled?: boolean;
 }
 
 export function NodePropertiesPanel({
@@ -27,13 +31,65 @@ export function NodePropertiesPanel({
   onDeselectNode,
   onDeleteNode,
   onApproveStep,
+  onSave,
+  saveStatus = "idle",
+  isSavingDisabled = false,
 }: NodePropertiesPanelProps) {
+  const [isAiOutputExpanded, setIsAiOutputExpanded] = useState(false);
+  const [isAdvancedConditionOpen, setIsAdvancedConditionOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (text: string) => {
+    if (!text) return;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const renderSaveButton = () => {
+    if (!onSave) return null;
+    return (
+      <button
+        id="btn-save"
+        type="button"
+        onClick={onSave}
+        disabled={saveStatus === "saving" || isSavingDisabled}
+        className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer ${
+          saveStatus === "saved"
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+            : saveStatus === "error"
+            ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+            : "border-white/15 bg-white/5 text-zinc-300 hover:border-white/30 hover:text-white"
+        }`}
+      >
+        {saveStatus === "saving" ? (
+          <>
+            <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span>Saving…</span>
+          </>
+        ) : saveStatus === "saved" ? (
+          "✓ Saved"
+        ) : (
+          "Save"
+        )}
+      </button>
+    );
+  };
+
   if (!selectedNode) {
     return (
       <aside className="w-80 shrink-0 border-l border-white/10 p-5 bg-[#0a0a0a] flex flex-col">
-        <h2 className="mb-5 text-sm font-semibold text-white">
-          Node Properties
-        </h2>
+        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+          <h2 className="text-sm font-semibold text-white">
+            Node Properties
+          </h2>
+          {renderSaveButton()}
+        </div>
 
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-zinc-400">
@@ -79,28 +135,39 @@ export function NodePropertiesPanel({
     <aside className="w-80 shrink-0 border-l border-white/10 p-5 bg-[#0a0a0a] overflow-y-auto max-h-[calc(100vh-4rem)] flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-base">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-base">
             {data.icon}
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-white">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white truncate">
               {getReadableType(nodeType)}
             </h2>
-            <p className="text-[11px] font-mono text-zinc-500 truncate max-w-[150px]">
+            <p className="text-[10px] font-mono text-zinc-500 truncate">
               ID: {id}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={onDeselectNode}
-          title="Deselect Node"
-          className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {renderSaveButton()}
+
+          <button
+            onClick={onDeselectNode}
+            title="Deselect Node"
+            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
       </div>
+
+      {/* Lock status callout */}
+      {data.locked && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300 flex items-center gap-2">
+          🔒 <span>Node is <strong>locked</strong>. Unlock via the canvas toolbar to delete or drag.</span>
+        </div>
+      )}
 
       {/* General Settings */}
       <div className="space-y-4">
@@ -569,21 +636,61 @@ export function NodePropertiesPanel({
               />
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Advanced / Custom Expression (Optional)
-              </label>
-              <textarea
-                rows={2}
-                value={config.condition?.expression ?? ""}
-                onChange={(e) =>
-                  onUpdateNodeConfig(id, "condition", {
-                    expression: e.target.value,
-                  })
-                }
-                placeholder='lastOutput.content && lastOutput.content.includes("APPROVE")'
-                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
+            {/* Advanced Options Disclosure */}
+            <div className="pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedConditionOpen((v) => !v)}
+                className="flex items-center justify-between w-full text-left py-1 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer group"
+              >
+                <span className="flex items-center gap-1.5 font-medium">
+                  <svg
+                    className={`h-3 w-3 text-zinc-500 transition-transform duration-150 ${
+                      isAdvancedConditionOpen ? "rotate-90 text-blue-400" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <span>Advanced Expression</span>
+                </span>
+                <span className="text-[10px] text-zinc-500 group-hover:text-zinc-400 font-mono">
+                  {config.condition?.expression ? "Configured" : "Optional"}
+                </span>
+              </button>
+
+              {isAdvancedConditionOpen && (
+                <div className="mt-2.5 space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-medium text-zinc-300">
+                      JavaScript Expression
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">returns boolean</span>
+                  </div>
+                  <div className="relative rounded-lg border border-white/10 bg-[#0d0d0d] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                    <textarea
+                      rows={3}
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      value={config.condition?.expression ?? ""}
+                      onChange={(e) =>
+                        onUpdateNodeConfig(id, "condition", {
+                          expression: e.target.value,
+                        })
+                      }
+                      placeholder='lastOutput?.content?.includes("APPROVE")'
+                      className="w-full resize-y font-mono bg-transparent p-2.5 text-xs text-blue-300 outline-none placeholder:text-zinc-600 leading-relaxed"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">
+                    Evaluated when standard operator is insufficient. Available scope: <code className="text-zinc-400 font-mono">lastOutput</code>, <code className="text-zinc-400 font-mono">steps</code>, <code className="text-zinc-400 font-mono">input</code>.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -751,81 +858,178 @@ export function NodePropertiesPanel({
           </div>
 
           {/* AI Agent Output */}
-          {(nodeType === "ai_agent" || nodeType === ("llm_call" as NodeType)) &&
-            Boolean(data.liveStepRun?.output || data.liveStepRun?.status === "completed") && (
-              <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
-                <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                  <span>
-                    Model:{" "}
-                    <span className="font-mono text-zinc-200">
-                      {String(
-                        (data.liveStepRun?.output as Record<string, unknown> | undefined)?.model ||
-                          config.aiAgent?.model ||
-                          "Gemini"
-                      )}
-                    </span>
-                  </span>
-                  {Boolean(
-                    (data.liveStepRun?.output as Record<string, unknown> | undefined)?.finishReason
-                  ) && (
-                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-zinc-400">
-                      {String(
-                        (data.liveStepRun?.output as Record<string, unknown> | undefined)
-                          ?.finishReason
-                      )}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">
-                    Generated Response:
-                  </label>
-                  <div className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[11px] text-zinc-200 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
+          {(nodeType === "ai_agent" || nodeType === ("llm_call" as NodeType)) && (
+            <>
+              {/* Completed / Active Output State */}
+              {Boolean(data.liveStepRun?.output || data.liveStepRun?.status === "completed" || data.executionStatus === "completed") && (
+                <div className="rounded-xl border border-blue-500/30 bg-gradient-to-b from-blue-950/20 to-black/50 p-3.5 text-xs space-y-3 shadow-lg">
+                  {/* Metadata Header */}
+                  <div className="grid grid-cols-2 gap-2 pb-2.5 border-b border-white/10 text-[11px]">
+                    <div>
+                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                        Model
+                      </span>
+                      <span className="font-mono text-zinc-100 font-medium truncate block">
+                        {String(
+                          (data.liveStepRun?.output as Record<string, unknown> | undefined)?.model ||
+                            config.aiAgent?.model ||
+                            "Gemini"
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                        Status
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        Completed
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Response Section */}
+                  <div>
                     {(() => {
                       const out = data.liveStepRun?.output as
                         | Record<string, unknown>
                         | string
                         | undefined;
-                      if (!out) return "Execution completed (empty output payload).";
-                      if (typeof out === "string") return out;
-                      const text =
-                        out.content ??
-                        out.text ??
-                        out.response ??
-                        out.raw ??
-                        out.message ??
-                        out.result;
-                      if (typeof text === "string" && text.length > 0) return text;
-                      return JSON.stringify(out, null, 2);
+                      const responseText = (() => {
+                        if (!out) return "Execution completed (empty output payload).";
+                        if (typeof out === "string") return out;
+                        const text =
+                          out.content ??
+                          out.text ??
+                          out.response ??
+                          out.raw ??
+                          out.message ??
+                          out.result;
+                        if (typeof text === "string" && text.length > 0) return text;
+                        return JSON.stringify(out, null, 2);
+                      })();
+
+                      return (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
+                                Response
+                              </label>
+                              <span className="text-[10px] font-mono text-zinc-500">
+                                ({responseText.length} chars)
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setIsAiOutputExpanded(!isAiOutputExpanded)}
+                                title={isAiOutputExpanded ? "Collapse View" : "Expand View"}
+                                className="rounded bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer flex items-center gap-1 border border-white/10"
+                              >
+                                {isAiOutputExpanded ? "⤡ Collapse" : "⤢ Expand"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(responseText)}
+                                className={`rounded px-2.5 py-0.5 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                                  copied
+                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+                                }`}
+                              >
+                                {copied ? "✓ Copied" : "📋 Copy Response"}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`rounded-lg border border-white/10 bg-black/70 p-3 font-sans text-xs text-zinc-100 whitespace-pre-wrap break-words leading-relaxed select-text transition-all ${
+                              isAiOutputExpanded
+                                ? "max-h-[500px] overflow-y-auto ring-1 ring-blue-500/30 shadow-inner"
+                                : "max-h-56 overflow-y-auto"
+                            }`}
+                          >
+                            {responseText}
+                          </div>
+                        </div>
+                      );
                     })()}
                   </div>
-                </div>
-                {Boolean(
-                  (data.liveStepRun?.output as Record<string, unknown> | undefined)?.tokensUsed
-                ) && (
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono pt-1 border-t border-white/5">
-                    <span>Tokens:</span>
-                    <span>
-                      Prompt:{" "}
-                      {String(
-                        ((data.liveStepRun?.output as Record<string, unknown>)
-                          ?.tokensUsed as Record<string, number>)?.prompt || 0
-                      )}{" "}
-                      | Completion:{" "}
-                      {String(
-                        ((data.liveStepRun?.output as Record<string, unknown>)
-                          ?.tokensUsed as Record<string, number>)?.completion || 0
-                      )}{" "}
-                      | Total:{" "}
-                      {String(
-                        ((data.liveStepRun?.output as Record<string, unknown>)
-                          ?.tokensUsed as Record<string, number>)?.total || 0
-                      )}
-                    </span>
+
+                  {/* Token & Finish Reason Footer */}
+                  <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 border-t border-white/5">
+                    {Boolean(
+                      (data.liveStepRun?.output as Record<string, unknown> | undefined)?.tokensUsed
+                    ) ? (
+                      <span>
+                        Tokens:{" "}
+                        <span className="text-zinc-300">
+                          {String(
+                            ((data.liveStepRun?.output as Record<string, unknown>)
+                              ?.tokensUsed as Record<string, number>)?.total ||
+                              ((data.liveStepRun?.output as Record<string, unknown>)
+                                ?.tokensUsed as Record<string, number>)?.completion ||
+                              0
+                          )}
+                        </span>
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+
+                    {Boolean(
+                      (data.liveStepRun?.output as Record<string, unknown> | undefined)?.finishReason
+                    ) && (
+                      <span>
+                        Finish:{" "}
+                        <span className="text-zinc-300">
+                          {String(
+                            (data.liveStepRun?.output as Record<string, unknown> | undefined)
+                              ?.finishReason
+                          )}
+                        </span>
+                      </span>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+
+              {/* Failed AI Execution State */}
+              {(data.executionStatus === "failed" || data.liveStepRun?.status === "failed") && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3.5 text-xs space-y-2.5 shadow-lg">
+                  <div className="grid grid-cols-2 gap-2 pb-2 border-b border-rose-500/20 text-[11px]">
+                    <div>
+                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                        Model
+                      </span>
+                      <span className="font-mono text-zinc-200 font-medium">
+                        {config.aiAgent?.model || "Gemini"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                        Status
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-rose-400">
+                        ✕ Failed
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-rose-300 mb-1">
+                      Error
+                    </label>
+                    <div className="rounded-lg border border-rose-500/30 bg-black/60 p-2.5 font-mono text-[11px] text-rose-200 whitespace-pre-wrap break-words leading-relaxed select-text max-h-48 overflow-y-auto">
+                      {data.executionError || data.liveStepRun?.error || "AI Agent execution failed."}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* HTTP Request Output */}
           {nodeType === "http_request" && data.liveStepRun?.output && (
@@ -938,10 +1142,10 @@ export function NodePropertiesPanel({
           )}
 
           {/* Execution Error (if failed) */}
-          {data.executionError && (
+          {(data.executionError || (data.executionStatus === "failed" && data.liveStepRun?.error)) && (
             <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300">
               <span className="font-semibold block mb-0.5">Error:</span>
-              <span className="font-mono text-[11px] break-all">{data.executionError}</span>
+              <span className="font-mono text-[11px] break-words">{data.executionError || data.liveStepRun?.error}</span>
             </div>
           )}
         </div>
@@ -950,14 +1154,22 @@ export function NodePropertiesPanel({
       {/* Delete Node Action */}
       <div className="border-t border-white/10 pt-4 mt-auto">
         <button
-          onClick={() => onDeleteNode(id)}
-          className="w-full rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/50 transition-all flex items-center justify-center gap-2"
+          onClick={() => { if (!data.locked) onDeleteNode(id); }}
+          disabled={Boolean(data.locked)}
+          title={data.locked ? "Unlock the node first to delete it" : "Delete this node"}
+          className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+            data.locked
+              ? "border-white/5 bg-white/[0.02] text-zinc-600 cursor-not-allowed"
+              : "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/50"
+          }`}
         >
-          🗑️ Delete Node
+          {data.locked ? "🔒 Locked — Cannot Delete" : "🗑️ Delete Node"}
         </button>
-        <p className="mt-1.5 text-center text-[10px] text-zinc-500">
-          Or press Delete / Backspace key
-        </p>
+        {!data.locked && (
+          <p className="mt-1.5 text-center text-[10px] text-zinc-500">
+            Or press Delete / Backspace key
+          </p>
+        )}
       </div>
     </aside>
   );

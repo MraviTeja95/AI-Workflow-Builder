@@ -7,6 +7,7 @@ export interface TriggerWorkflowRunInput {
   userId: string;
   triggerType?: string;
   initialInput?: Record<string, unknown>;
+  workflow_run_id?: string;
 }
 
 export interface TriggerWorkflowRunOutput {
@@ -632,6 +633,7 @@ export async function executeLlmCall(config: {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(20000),
         });
 
         if (!res.ok) {
@@ -639,14 +641,14 @@ export async function executeLlmCall(config: {
           const errorMsg =
             errorJson?.error?.message ||
             `HTTP ${res.status} ${res.statusText} from Gemini API`;
-          console.warn(`[LLM Executor] Model ${modelToTry} returned ${res.status}: ${errorMsg}`);
+          console.warn(`[workflow] stage=ai_agent model=${modelToTry} status=${res.status} error="${errorMsg.slice(0, 100)}"`);
           lastError = new Error(`Google Gemini API Error: ${errorMsg}`);
           // Rate-limited or quota exceeded -> try next candidate model
           continue;
         }
 
         const data = await res.json();
-        console.log(`[LLM Executor] Gemini request succeeded on ${modelToTry}`);
+        console.log(`[workflow] stage=ai_agent model=${modelToTry} status=completed`);
 
         const candidate = data.candidates?.[0];
         const content =
@@ -660,10 +662,6 @@ export async function executeLlmCall(config: {
           data.usageMetadata?.candidatesTokenCount ||
           Math.max(1, Math.ceil(content.length / 4));
 
-        console.log(
-          `[LLM Executor] Response received (${content.length} chars, finishReason: ${finishReason})`
-        );
-
         return {
           content,
           model: modelToTry,
@@ -676,8 +674,12 @@ export async function executeLlmCall(config: {
           finishReason,
         };
       } catch (fetchErr) {
-        lastError = fetchErr as Error;
-        console.warn(`[LLM Executor] Fetch error on ${modelToTry}: ${(fetchErr as Error).message}`);
+        const err = fetchErr as Error;
+        const isFetchFail = err.message.toLowerCase().includes("fetch failed") || err.name === "TimeoutError";
+        lastError = isFetchFail
+          ? new Error(`Unable to reach Google Gemini API: network connection reset or timeout on model ${modelToTry}.`)
+          : err;
+        console.warn(`[workflow] stage=ai_agent model=${modelToTry} transient error: ${err.message}`);
       }
     }
 
@@ -924,23 +926,31 @@ export async function executeDbWrite(
     throw new Error("Failed to construct or resolve SQL statement.");
   }
 
-  console.log(`[DB Write Executor] Executing SQL (${operation}): ${resolvedSql}`);
+  console.log(`[workflow] stage=db_write operation=${operation} table="${resolvedTable}"`);
 
-  const res = await fetch(sqlUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-hasura-admin-secret": adminSecret,
-    },
-    body: JSON.stringify({
-      type: "run_sql",
-      args: { source: "default", sql: resolvedSql },
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(sqlUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-hasura-admin-secret": adminSecret,
+      },
+      body: JSON.stringify({
+        type: "run_sql",
+        args: { source: "default", sql: resolvedSql },
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (fetchErr) {
+    const error = fetchErr as Error;
+    const isFetchFail = error.message.toLowerCase().includes("fetch failed") || error.name === "TimeoutError";
+    throw new Error(isFetchFail ? "Unable to connect to database service (connection timeout/reset)." : error.message);
+  }
 
-  const responseJson = await res.json();
+  const responseJson = await res.json().catch(() => ({}));
   if (!res.ok || responseJson.error) {
-    const detail = responseJson.internal?.error?.message || responseJson.error || responseJson.message || "Database query execution failed.";
+    const detail = responseJson.internal?.error?.message || responseJson.error || responseJson.message || `Database query failed (HTTP ${res.status}).`;
     throw new Error(`Database error: ${detail}`);
   }
 
@@ -1028,62 +1038,193 @@ export async function executeNotify(
           timestamp: deliveredAt,
         };
 
-    const res = await fetch(resolvedRecipient, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(10000),
-    });
+    const maxAttempts = 3;
+    let lastError: Error | null = null;
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(`Notification delivery to ${resolvedRecipient} failed with status ${res.status}: ${errText.slice(0, 200)}`);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        console.log(`[workflow] stage=notify channel=webhook attempt=${attempt} recipient="${resolvedRecipient.slice(0, 50)}"`);
+
+        const res = await fetch(resolvedRecipient, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          console.warn(`[workflow] stage=notify channel=webhook attempt=${attempt} status=${res.status}`);
+
+          // Permanent 4xx client errors should not be retried
+          if (res.status >= 400 && res.status < 500) {
+            throw new Error(`Notification webhook rejected by destination (HTTP ${res.status}): ${errText.slice(0, 200)}`);
+          }
+
+          if (res.status >= 500 && attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+            continue;
+          }
+
+          throw new Error(`Notification delivery to ${resolvedRecipient} failed with status ${res.status}: ${errText.slice(0, 200)}`);
+        }
+
+        console.log(`[workflow] stage=notify channel=webhook status=completed messageId=${messageId}`);
+
+        return {
+          success: true,
+          channel,
+          recipient: resolvedRecipient,
+          message: resolvedMessage,
+          deliveredAt,
+          messageId,
+          status: "delivered",
+          details: {
+            statusCode: res.status,
+            statusText: res.statusText,
+          },
+        };
+      } catch (err: unknown) {
+        const error = err as Error;
+        if (error.message.includes("rejected by destination (HTTP 4")) {
+          throw error;
+        }
+
+        const isNetworkFetchError =
+          error.message.toLowerCase().includes("fetch failed") ||
+          error.name === "TimeoutError" ||
+          error.name === "AbortError";
+        const normalizedMessage = isNetworkFetchError
+          ? `Unable to connect to notification destination '${resolvedRecipient}' (network timeout or connection reset).`
+          : error.message;
+
+        lastError = new Error(normalizedMessage);
+
+        if (attempt < maxAttempts) {
+          console.warn(`[workflow] stage=notify transient error on attempt ${attempt}: ${error.message}. Retrying...`);
+          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+          continue;
+        }
+      }
     }
 
-    return {
-      success: true,
-      channel,
-      recipient: resolvedRecipient,
-      message: resolvedMessage,
-      deliveredAt,
-      messageId,
-      status: "delivered",
-      details: {
-        statusCode: res.status,
-        statusText: res.statusText,
-      },
-    };
+    throw lastError || new Error(`Notification delivery failed after ${maxAttempts} attempts.`);
   }
 
-  // Channel 2: Email
+  // Channel 2: Email (Resend Integration)
   if (channel.toLowerCase() === "email") {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resolvedRecipient)) {
       throw new Error(`Invalid email address format: '${resolvedRecipient}'.`);
     }
 
-    console.log(`[Notification Dispatcher] Email dispatched to ${resolvedRecipient}: "${resolvedMessage.slice(0, 60)}..."`);
+    const resendApiKey = process.env.RESEND_API_KEY?.trim();
+    if (!resendApiKey) {
+      throw new Error("Email notification is not configured: RESEND_API_KEY is missing on server.");
+    }
 
-    return {
-      success: true,
-      channel: "Email",
-      recipient: resolvedRecipient,
-      message: resolvedMessage,
-      deliveredAt,
-      messageId,
-      status: "delivered",
-      details: {
-        provider: "Internal Dispatcher",
-        to: resolvedRecipient,
-      },
-    };
+    const emailFrom = process.env.EMAIL_FROM?.trim();
+    if (!emailFrom) {
+      throw new Error("Email notification is not configured: EMAIL_FROM is missing on server.");
+    }
+
+    const maxAttempts = 3;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        console.log(`[workflow] stage=notify provider=resend attempt=${attempt} recipient="${resolvedRecipient}"`);
+
+        const resendRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: emailFrom,
+            to: [resolvedRecipient],
+            subject: "AI Workflow Builder Notification",
+            text: resolvedMessage,
+          }),
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!resendRes.ok) {
+          let errorDetail = "";
+          try {
+            const errJson = (await resendRes.json()) as { message?: string; error?: string; name?: string };
+            errorDetail = errJson.message || errJson.error || JSON.stringify(errJson);
+          } catch {
+            errorDetail = await resendRes.text().catch(() => "");
+          }
+
+          console.warn(`[workflow] provider=resend attempt=${attempt} status=${resendRes.status} error="${errorDetail.slice(0, 120)}"`);
+
+          // 4xx errors from provider are permanent -> fail fast without blind retries
+          if (resendRes.status >= 400 && resendRes.status < 500) {
+            throw new Error(`Email delivery rejected by Resend (${resendRes.status}): ${errorDetail.slice(0, 200)}`);
+          }
+
+          // 5xx server errors -> retry with exponential backoff
+          if (resendRes.status >= 500 && attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+            continue;
+          }
+
+          throw new Error(`Email delivery failed via Resend (Status ${resendRes.status}): ${errorDetail.slice(0, 200)}`);
+        }
+
+        const resendData = ((await resendRes.json()) || {}) as { id?: string };
+        const providerMessageId = resendData.id || messageId;
+        console.log(`[workflow] provider=resend attempt=${attempt} status=completed messageId=${providerMessageId}`);
+
+        return {
+          success: true,
+          channel: "Email",
+          recipient: resolvedRecipient,
+          message: resolvedMessage,
+          deliveredAt,
+          messageId: providerMessageId,
+          status: "delivered",
+          details: {
+            provider: "Resend",
+            to: resolvedRecipient,
+          },
+        };
+      } catch (err: unknown) {
+        const error = err as Error;
+        // If it's a permanent 4xx error thrown above, rethrow immediately without retrying
+        if (error.message.includes("rejected by Resend (4")) {
+          throw error;
+        }
+
+        const isNetworkFetchError =
+          error.message.toLowerCase().includes("fetch failed") ||
+          error.name === "TimeoutError" ||
+          error.name === "AbortError";
+        const normalizedMessage = isNetworkFetchError
+          ? "Unable to reach notification service (network timeout or connection reset)."
+          : error.message;
+
+        lastError = new Error(normalizedMessage);
+
+        if (attempt < maxAttempts) {
+          console.warn(`[workflow] provider=resend transient error on attempt ${attempt}: ${error.message}. Retrying in ${500 * Math.pow(2, attempt - 1)}ms...`);
+          await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+          continue;
+        }
+      }
+    }
+
+    throw lastError || new Error("Email delivery failed after multiple attempts.");
   }
 
   // Channel 3: Slack
   if (channel.toLowerCase() === "slack") {
-    console.log(`[Notification Dispatcher] Slack message dispatched to ${resolvedRecipient}: "${resolvedMessage.slice(0, 60)}..."`);
+    console.log(`[workflow] stage=notify channel=slack recipient="${resolvedRecipient}"`);
 
     return {
       success: true,
@@ -1817,7 +1958,7 @@ export async function executeWorkflowSteps(
 export async function handleTriggerWorkflowRun(
   input: TriggerWorkflowRunInput
 ): Promise<TriggerWorkflowRunOutput> {
-  const { workflow_id, userId, triggerType = "manual", initialInput = {} } = input;
+  const { workflow_id, userId, triggerType = "manual", initialInput = {}, workflow_run_id } = input;
 
   if (!userId) {
     throw new ActionExecutionError("Unauthorized: Missing authenticated user session context.", "UNAUTHORIZED", 401);
@@ -1903,6 +2044,7 @@ export async function handleTriggerWorkflowRun(
     };
   }>(INSERT_WORKFLOW_RUN_MUTATION, {
     object: {
+      ...(workflow_run_id ? { id: workflow_run_id } : {}),
       workflow_id: workflow.id,
       status: "running",
       trigger_type: triggerType,
@@ -1912,7 +2054,7 @@ export async function handleTriggerWorkflowRun(
   });
 
   const runRecord = runRes.insert_workflow_runs_one;
-  const workflowRunId = runRecord.id;
+  const workflowRunId = runRecord?.id || workflow_run_id || "";
 
   // 4. Sequential Step Execution Context
   const executionContext: {

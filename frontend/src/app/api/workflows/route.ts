@@ -6,6 +6,7 @@ import {
   validatePrivilegedOperations,
   getWorkflowOrg,
 } from "@/lib/auth";
+import { getTopologicallySortedNodes } from "@/lib/graphOrder";
 import type { Node, Edge } from "@xyflow/react";
 import type { WorkflowNodeData } from "@/types/workflow";
 
@@ -98,8 +99,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Prepare Step Rows
-    const actionNodes = nodes.filter(
+    // 5. Prepare Step Rows (Topologically sorted by graph topology / edges)
+    const sortedNodes = getTopologicallySortedNodes(nodes, edges);
+    const actionNodes = sortedNodes.filter(
       (node) => node.data.nodeType !== "trigger"
     );
 

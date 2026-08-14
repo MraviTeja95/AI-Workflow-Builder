@@ -6,8 +6,9 @@ import {
 
 interface HasuraActionRequestBody {
   action?: { name: string };
-  input?: { workflow_id: string; trigger_type?: string };
+  input?: { workflow_id: string; trigger_type?: string; workflow_run_id?: string };
   session_variables?: Record<string, string>;
+  workflow_run_id?: string;
 }
 
 export async function POST(request: Request) {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
 
     const workflowId = body.input?.workflow_id;
     const triggerType = body.input?.trigger_type || "manual";
+    const workflowRunId = body.input?.workflow_run_id || body.workflow_run_id;
 
     if (!userId) {
       return NextResponse.json(
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
       workflow_id: workflowId,
       userId,
       triggerType,
+      workflow_run_id: workflowRunId,
     });
 
     return NextResponse.json(result);

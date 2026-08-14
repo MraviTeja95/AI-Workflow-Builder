@@ -1,26 +1,202 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
+/* ─── Design System Tokens ─────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --surface-0:  #090909;
+  --surface-1:  #111111;
+  --surface-2:  #181818;
+  --surface-3:  #202020;
+  --border:     rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.18);
+  --text-primary:   #f0f0f0;
+  --text-secondary: #a1a1aa;
+  --text-muted:     #52525b;
+  --accent:     #3b82f6;
+  --accent-dim: rgba(59,130,246,0.15);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ─── React Flow Global Overrides ────────────────────────────────────────── */
+
+/* Strip default white panel background from Controls */
+.react-flow__controls {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.react-flow__controls-button {
+  background: rgba(24,24,24,0.95) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 8px !important;
+  color: #a1a1aa !important;
+  fill: #a1a1aa !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 150ms, border-color 150ms, color 150ms !important;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+  color: #f0f0f0 !important;
+  fill: #f0f0f0 !important;
+}
+
+/* MiniMap */
+.react-flow__minimap {
+  background: rgba(14,14,14,0.85) !important;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+/* Edge paths */
+.react-flow__edge-path {
+  stroke-width: 1.5 !important;
+}
+
+/* ─── Canvas background grid ─────────────────────────────────────────────── */
+.react-flow__background {
+  background-color: var(--surface-0) !important;
+}
+
+/* ─── Selection box ──────────────────────────────────────────────────────── */
+.react-flow__selection {
+  background: rgba(59,130,246,0.06) !important;
+  border: 1px solid rgba(59,130,246,0.4) !important;
+  border-radius: 6px !important;
+}
+
+/* ─── Node Toolbar container ─────────────────────────────────────────────── */
+.react-flow__node-toolbar {
+  filter: none !important;
+}
+
+/* ─── Keyframe animations ────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%;   }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%;   }
+}
+
+@keyframes orb-float {
+  0%   { transform: translateY(0px) scale(1);    }
+  50%  { transform: translateY(-18px) scale(1.03); }
+  100% { transform: translateY(0px) scale(1);    }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.animate-fade-in-up  { animation: fadeInUp 0.35s ease both; }
+.animate-fade-in     { animation: fadeIn 0.3s ease both; }
+.animate-scale-in    { animation: scaleIn 0.25s ease both; }
+.animate-orb-float   { animation: orb-float 7s ease-in-out infinite; }
+.animate-spin-slow   { animation: spin-slow 25s linear infinite; }
+
+/* ─── Node button style (sidebar) ───────────────────────────────────────── */
+.node-button {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
+  color: #d4d4d8;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: grab;
+  user-select: none;
+}
+
+.node-button:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.07);
+  color: #f0f0f0;
+  transform: translateX(2px);
+}
+
+.node-button:active {
+  transform: scale(0.98);
+  cursor: grabbing;
+}
+
+/* ─── Canvas Lock Button ─────────────────────────────────────────────────── */
+.canvas-lock-btn {
+  background: rgba(24,24,24,0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #a1a1aa;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms, color 150ms;
+  font-size: 12px;
+}
+
+.canvas-lock-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.2);
+  color: #f0f0f0;
+}
+
+.canvas-lock-btn.locked {
+  background: rgba(245,158,11,0.15);
+  border-color: rgba(245,158,11,0.35);
+  color: #fbbf24;
+}
+
+.canvas-lock-btn.locked:hover {
+  background: rgba(245,158,11,0.22);
 }

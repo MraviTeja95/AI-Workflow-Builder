@@ -31,35 +31,66 @@ export async function executeGraphQL<T>(
     );
   }
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-hasura-admin-secret": adminSecret,
-    },
-    body: JSON.stringify({ query, variables }),
-    cache: "no-store",
-  });
+  const maxAttempts = 3;
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `GraphQL HTTP Error (${response.status} ${response.statusText}): ${errorText}`
-    );
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-hasura-admin-secret": adminSecret,
+        },
+        body: JSON.stringify({ query, variables }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        if (response.status >= 500 && attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 200 * attempt));
+          continue;
+        }
+        throw new Error(
+          `GraphQL HTTP Error (${response.status} ${response.statusText}): ${errorText.slice(0, 300)}`
+        );
+      }
+
+      const json: GraphQLResponse<T> = await response.json();
+
+      if (json.errors && json.errors.length > 0) {
+        const errorMessages = json.errors.map((e) => e.message).join(", ");
+        throw new Error(`GraphQL Error: ${errorMessages}`);
+      }
+
+      if (!json.data) {
+        throw new Error("No data returned from GraphQL server.");
+      }
+
+      return json.data;
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error.message.startsWith("GraphQL Error:")) {
+        throw error;
+      }
+      const isFetchFail =
+        error.message.toLowerCase().includes("fetch failed") ||
+        error.name === "TimeoutError" ||
+        error.name === "AbortError";
+      lastError = isFetchFail
+        ? new Error("Unable to connect to database service (network connection reset/timeout).")
+        : error;
+
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 200 * attempt));
+        continue;
+      }
+    }
   }
 
-  const json: GraphQLResponse<T> = await response.json();
-
-  if (json.errors && json.errors.length > 0) {
-    const errorMessages = json.errors.map((e) => e.message).join(", ");
-    throw new Error(`GraphQL Error: ${errorMessages}`);
-  }
-
-  if (!json.data) {
-    throw new Error("No data returned from GraphQL server.");
-  }
-
-  return json.data;
+  throw lastError || new Error("GraphQL request failed after multiple attempts.");
 }
 
 export const WORKFLOW_QUERIES = {

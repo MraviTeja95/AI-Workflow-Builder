@@ -38,8 +38,9 @@ export interface AuthContextType {
   role: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isDemo: boolean;
   accessToken: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, isDemoMode?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
 }
@@ -59,6 +60,14 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
     null
   );
   const [role, setRole] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return sessionStorage.getItem("ai_workflow_demo_session") === "true";
+      } catch {}
+    }
+    return false;
+  });
 
   const fetchOrganizationDetails = useCallback(async (userId: string) => {
     try {
@@ -97,10 +106,20 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isMounted, isNhostAuthLoading, isNhostAuthenticated, nhostUser?.id]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, isDemoMode = false) => {
     const result = await signInEmailPassword(email, password);
     if (result.isError) {
       throw new Error(result.error?.message || "Failed to sign in.");
+    }
+    setIsDemo(Boolean(isDemoMode));
+    if (typeof window !== "undefined") {
+      try {
+        if (isDemoMode) {
+          sessionStorage.setItem("ai_workflow_demo_session", "true");
+        } else {
+          sessionStorage.removeItem("ai_workflow_demo_session");
+        }
+      } catch {}
     }
     if (result.user && result.user.id) {
       await fetchOrganizationDetails(result.user.id);
@@ -111,6 +130,12 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
     await signOut();
     setOrganization(null);
     setRole(null);
+    setIsDemo(false);
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("ai_workflow_demo_session");
+      } catch {}
+    }
   };
 
   const refreshSession = async () => {
@@ -144,6 +169,7 @@ function AuthStateProvider({ children }: { children: React.ReactNode }) {
         role,
         isLoading,
         isAuthenticated,
+        isDemo,
         accessToken: isAuthenticated ? accessToken : null,
         login,
         logout,

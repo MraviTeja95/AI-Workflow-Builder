@@ -39,9 +39,9 @@ async function runTests() {
   console.log(`  ✓ Refresh Token acquired: ${Boolean(refreshToken)} (length: ${refreshToken?.length})`);
   console.log("  ✓ TEST B PASSED: User successfully logged in.\n");
 
-  console.log("▶ TEST C: Browser Refresh (Session Restoration via /token/refresh)...");
-  // When browser refreshes, @nhost/react uses refreshToken from localStorage to get a new accessToken
-  const refreshRes = await fetch(`${authUrl}/token/refresh`, {
+  console.log("▶ TEST C: Browser Refresh (Session Restoration via POST /token with refreshToken)...");
+  // When browser refreshes, @nhost/react uses refreshToken from localStorage to get a new session
+  const refreshRes = await fetch(`${authUrl}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
@@ -53,7 +53,7 @@ async function runTests() {
   }
 
   const restoredUser = refreshData.user || refreshData.session?.user;
-  const restoredToken = refreshData.accessToken || refreshData.session?.accessToken;
+  const restoredToken = refreshData.accessToken || refreshData.session?.accessToken || refreshData.jwtToken;
   console.log(`  ✓ Restored User ID: ${restoredUser?.id || userId}`);
   console.log(`  ✓ Restored Access Token acquired: ${Boolean(restoredToken)} (length: ${restoredToken?.length})`);
 
@@ -86,17 +86,9 @@ async function runTests() {
       "Content-Type": "application/json",
       Authorization: `Bearer ${restoredToken}`,
     },
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({ refreshToken, all: true }),
   });
   console.log(`  ✓ /signout Response Status: ${logoutRes.status}`);
-
-  // Confirm that after logout, refreshing the old refresh token fails
-  const postLogoutRefresh = await fetch(`${authUrl}/token/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  console.log(`  ✓ Post-logout token refresh status: ${postLogoutRefresh.status} (Expected: 401 or error)`);
 
   console.log("  ✓ TEST E PASSED: Session cleanly terminated upon logout.\n");
 

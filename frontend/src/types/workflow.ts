@@ -118,7 +118,11 @@ export type WorkflowNodeData = {
   executionError?: string | null;
   liveStepRun?: StepRun;
   userRole?: string | null;
+  locked?: boolean;
   onApprove?: (stepId?: string, stepRunId?: string) => void;
+  /** Canvas toolbar callbacks — injected by page.tsx */
+  onLockToggle?: (nodeId: string) => void;
+  onDeleteNode?: (nodeId: string) => void;
   [key: string]: unknown;
 };
 
