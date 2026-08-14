@@ -287,3 +287,5 @@ node --experimental-strip-types scripts/test-approval-gate-graph-order.mjs
 2. **Environment Template**: Use `.env.example` as the basis for deployments; `.env.local` is ignored by Git.
 3. **Database Security**: Database writes validate authorized permissions and sanitize SQL operations to prevent injection attacks.
 4. **Sandboxed Expressions**: Client-submitted condition expressions cannot access global runtime objects or execute unauthorized system commands.
+<img width="1912" height="862" alt="Screenshot 2026-08-14 165206" src="https://github.com/user-attachments/assets/509629fb-4792-4533-be93-c5cb15b21ac9" />
+<img width="1912" height="868" alt="Screenshot 2026-08-14 165220" src="https://github.com/user-attachments/assets/8a5b0af4-81ae-4368-9739-73e577316d43" />
