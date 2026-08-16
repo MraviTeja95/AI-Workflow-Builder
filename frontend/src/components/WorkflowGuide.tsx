@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 interface WorkflowGuideProps {
   isOpen: boolean;
@@ -58,52 +58,95 @@ const GUIDE_STEPS = [
 export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [viewMode, setViewMode] = useState<"walkthrough" | "cheatsheet">("walkthrough");
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  if (!isOpen) return null;
-
-  const currentStep = GUIDE_STEPS[currentStepIndex];
-
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("has_seen_workflow_guide", "true");
       } catch {}
     }
     onClose();
-  };
+  }, [onClose]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentStepIndex < GUIDE_STEPS.length - 1) {
       setCurrentStepIndex((prev) => prev + 1);
     } else {
       handleDismiss();
     }
-  };
+  }, [currentStepIndex, handleDismiss]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex((prev) => prev - 1);
     }
-  };
+  }, [currentStepIndex]);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        handleDismiss();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleDismiss]);
+
+  // Focus trap — focus modal on open
+  useEffect(() => {
+    if (isOpen && modalRef.current) {
+      modalRef.current.focus();
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const currentStep = GUIDE_STEPS[currentStepIndex];
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(8px)" }}
       onClick={handleDismiss}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Workflow Guide"
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-white/12 bg-[#121212] shadow-2xl overflow-hidden flex flex-col animate-scale-in"
+        ref={modalRef}
+        tabIndex={-1}
+        className="w-full max-w-lg overflow-hidden flex flex-col animate-scale-in outline-none"
+        style={{
+          borderRadius: "var(--radius-sheet)",
+          border: "1px solid var(--separator)",
+          background: "var(--bg-secondary)",
+          boxShadow: "var(--shadow-sheet)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-6 py-4 bg-[#161616]">
+        <div className="flex items-center justify-between" style={{
+          borderBottom: "1px solid var(--separator-light)",
+          padding: "16px 24px",
+          background: "var(--bg-tertiary)",
+        }}>
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-500/30 text-xs font-bold text-blue-400">
+            <div className="flex h-7 w-7 items-center justify-center text-xs" style={{
+              borderRadius: "var(--radius-sm)",
+              background: "var(--accent-dim)",
+              color: "var(--accent)",
+            }}>
               💡
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Workflow Guide</h3>
-              <p className="text-[11px] text-zinc-400">Learn how to build and run workflows</p>
+              <h3 style={{ fontSize: "var(--text-subhead)", fontWeight: 600, color: "var(--text-primary)" }}>Workflow Guide</h3>
+              <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)" }}>Learn how to build and run workflows</p>
             </div>
           </div>
 
@@ -111,14 +154,30 @@ export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
             <button
               type="button"
               onClick={() => setViewMode((m) => (m === "walkthrough" ? "cheatsheet" : "walkthrough"))}
-              className="rounded-lg border border-white/10 px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:bg-white/5 transition-colors cursor-pointer"
+              className="transition-colors cursor-pointer"
+              style={{
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--separator-light)",
+                padding: "4px 10px",
+                fontSize: "var(--text-caption-2)",
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+                background: "transparent",
+              }}
             >
               {viewMode === "walkthrough" ? "View All" : "Interactive Steps"}
             </button>
             <button
               type="button"
               onClick={handleDismiss}
-              className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              aria-label="Close guide"
+              className="transition-colors cursor-pointer"
+              style={{
+                borderRadius: "var(--radius-sm)",
+                padding: "6px",
+                color: "var(--text-secondary)",
+                background: "transparent",
+              }}
             >
               ✕
             </button>
@@ -127,54 +186,86 @@ export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
 
         {/* Content */}
         {viewMode === "walkthrough" ? (
-          <div className="p-6 flex flex-col flex-1">
+          <div className="flex flex-col flex-1" style={{ padding: "24px" }}>
             {/* Step badge & progress */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="rounded-full bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 text-[10px] font-semibold text-blue-400 uppercase tracking-wide">
+            <div className="flex items-center justify-between" style={{ marginBottom: "16px" }}>
+              <span style={{
+                borderRadius: "99px",
+                background: "var(--accent-dim)",
+                padding: "3px 10px",
+                fontSize: "10px",
+                fontWeight: 600,
+                color: "var(--accent)",
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.04em",
+              }}>
                 {currentStep.badge}
               </span>
-              <span className="text-[11px] font-mono text-zinc-500">
+              <span style={{ fontSize: "var(--text-caption-2)", fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>
                 Step {currentStep.step} of {GUIDE_STEPS.length}
               </span>
             </div>
 
             {/* Step Card */}
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-5 mb-5 flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-2xl">{currentStep.icon}</span>
-                <h4 className="text-base font-semibold text-white">{currentStep.title}</h4>
+            <div className="flex-1" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid var(--separator-light)",
+              background: "rgba(255,255,255,0.02)",
+              padding: "20px",
+              marginBottom: "20px",
+            }}>
+              <div className="flex items-center gap-3" style={{ marginBottom: "12px" }}>
+                <span style={{ fontSize: "24px" }}>{currentStep.icon}</span>
+                <h4 style={{ fontSize: "var(--text-callout)", fontWeight: 600, color: "var(--text-primary)" }}>{currentStep.title}</h4>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed mb-4">
+              <p style={{
+                fontSize: "var(--text-footnote)",
+                color: "var(--text-secondary)",
+                lineHeight: 1.6,
+                marginBottom: "16px",
+              }}>
                 {currentStep.description}
               </p>
-              <div className="rounded-lg border border-white/5 bg-white/[0.02] p-3 text-[11px] text-zinc-400 flex items-start gap-2">
-                <span className="text-blue-400 shrink-0 font-bold">Tip:</span>
+              <div style={{
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--separator-light)",
+                background: "rgba(255,255,255,0.02)",
+                padding: "12px",
+                fontSize: "var(--text-caption-2)",
+                color: "var(--text-secondary)",
+              }} className="flex items-start gap-2">
+                <span style={{ color: "var(--accent)", fontWeight: 700 }} className="shrink-0">Tip:</span>
                 <span>{currentStep.highlight}</span>
               </div>
             </div>
 
             {/* Step Indicators */}
-            <div className="flex items-center justify-center gap-1.5 mb-5">
+            <div className="flex items-center justify-center gap-1.5" style={{ marginBottom: "20px" }}>
               {GUIDE_STEPS.map((s, idx) => (
                 <button
                   key={s.step}
                   type="button"
                   onClick={() => setCurrentStepIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                    idx === currentStepIndex
-                      ? "w-6 bg-blue-500"
-                      : "w-2 bg-white/20 hover:bg-white/40"
-                  }`}
+                  aria-label={`Go to step ${s.step}`}
+                  className="rounded-full transition-all cursor-pointer"
+                  style={{
+                    height: "6px",
+                    width: idx === currentStepIndex ? "24px" : "8px",
+                    background: idx === currentStepIndex ? "var(--accent)" : "rgba(255,255,255,0.15)",
+                    border: "none",
+                    padding: 0,
+                  }}
                 />
               ))}
             </div>
 
             {/* Footer buttons */}
-            <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between" style={{ paddingTop: "12px", borderTop: "1px solid var(--separator-light)" }}>
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                className="cursor-pointer transition-colors"
+                style={{ fontSize: "var(--text-footnote)", color: "var(--text-tertiary)", background: "none", border: "none" }}
               >
                 Skip Guide
               </button>
@@ -184,7 +275,16 @@ export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
                   <button
                     type="button"
                     onClick={handleBack}
-                    className="rounded-xl border border-white/10 px-3.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-white/5 transition-all cursor-pointer"
+                    className="cursor-pointer transition-all"
+                    style={{
+                      borderRadius: "var(--radius-button)",
+                      border: "1px solid var(--separator-light)",
+                      padding: "6px 14px",
+                      fontSize: "var(--text-footnote)",
+                      fontWeight: 500,
+                      color: "var(--text-secondary)",
+                      background: "transparent",
+                    }}
                   >
                     Back
                   </button>
@@ -192,7 +292,15 @@ export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-600/25 transition-all cursor-pointer"
+                  className="cursor-pointer transition-all text-white"
+                  style={{
+                    borderRadius: "var(--radius-button)",
+                    padding: "6px 16px",
+                    fontSize: "var(--text-footnote)",
+                    fontWeight: 600,
+                    background: "var(--accent)",
+                    border: "none",
+                  }}
                 >
                   {currentStepIndex === GUIDE_STEPS.length - 1 ? "Got It ✓" : "Next →"}
                 </button>
@@ -201,30 +309,51 @@ export function WorkflowGuide({ isOpen, onClose }: WorkflowGuideProps) {
           </div>
         ) : (
           /* Cheatsheet / All-in-one view */
-          <div className="p-6 space-y-3 max-h-[420px] overflow-y-auto">
+          <div className="space-y-3 max-h-[420px] overflow-y-auto" style={{ padding: "24px" }}>
             {GUIDE_STEPS.map((s) => (
               <div
                 key={s.step}
-                className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5 hover:border-white/15 transition-all"
+                className="transition-all"
+                style={{
+                  borderRadius: "var(--radius-card)",
+                  border: "1px solid var(--separator-light)",
+                  background: "rgba(255,255,255,0.02)",
+                  padding: "14px",
+                }}
               >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-sm">{s.icon}</span>
-                  <h5 className="text-xs font-semibold text-white">{s.title}</h5>
-                  <span className="ml-auto rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-mono text-zinc-500">
+                <div className="flex items-center gap-2" style={{ marginBottom: "6px" }}>
+                  <span style={{ fontSize: "var(--text-subhead)" }}>{s.icon}</span>
+                  <h5 style={{ fontSize: "var(--text-footnote)", fontWeight: 600, color: "var(--text-primary)" }}>{s.title}</h5>
+                  <span className="ml-auto" style={{
+                    borderRadius: "var(--radius-sm)",
+                    background: "rgba(255,255,255,0.04)",
+                    padding: "2px 6px",
+                    fontSize: "9px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-tertiary)",
+                  }}>
                     {s.badge}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-300 leading-relaxed mb-1.5">{s.description}</p>
-                <p className="text-[10px] text-blue-400 font-medium">{s.highlight}</p>
+                <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: "6px" }}>{s.description}</p>
+                <p style={{ fontSize: "10px", color: "var(--accent)", fontWeight: 500 }}>{s.highlight}</p>
               </div>
             ))}
-            <div className="pt-2 text-center">
+            <div style={{ paddingTop: "8px", textAlign: "center" as const }}>
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="rounded-xl bg-blue-600 hover:bg-blue-500 px-5 py-2 text-xs font-semibold text-white transition-all cursor-pointer"
+                className="cursor-pointer transition-all text-white"
+                style={{
+                  borderRadius: "var(--radius-button)",
+                  padding: "8px 20px",
+                  fontSize: "var(--text-footnote)",
+                  fontWeight: 600,
+                  background: "var(--accent)",
+                  border: "none",
+                }}
               >
-                Close Quick Guide
+                Close Guide
               </button>
             </div>
           </div>

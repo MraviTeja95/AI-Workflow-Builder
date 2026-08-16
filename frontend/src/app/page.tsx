@@ -96,7 +96,7 @@ const initialNodes: Node<WorkflowNodeData>[] = [
       config: {
         notify: {
           channel: "Email",
-          recipient: "delivered@resend.dev",
+          recipient: "team@example.com",
           message:
             "Workflow notification: Order processing completed. AI evaluation: {{steps.AI Agent.content}}",
         },
@@ -105,7 +105,7 @@ const initialNodes: Node<WorkflowNodeData>[] = [
   },
 ];
 
-const EDGE_STYLE = { stroke: "rgba(59,130,246,0.6)", strokeWidth: 1.5 };
+const EDGE_STYLE = { stroke: "rgba(10,132,255,0.50)", strokeWidth: 1.5 };
 
 const initialEdges: Edge[] = [
   {
@@ -954,10 +954,10 @@ export default function Home() {
   // 1. Loading State (Deterministic on initial SSR and hydration)
   if (!isMounted || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white">
+      <div className="flex min-h-screen items-center justify-center text-white" style={{ background: "var(--bg-primary)" }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-          <p className="text-xs text-zinc-400">Authenticating session...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+          <p style={{ fontSize: "var(--text-footnote)", color: "var(--text-secondary)" }}>Authenticating session...</p>
         </div>
       </div>
     );
@@ -970,19 +970,24 @@ export default function Home() {
 
   // 3. Authenticated State -> Show Workflow Editor
   return (
-    <main className="min-h-screen bg-[#090909] text-white flex flex-col">
+    <main className="min-h-screen text-white flex flex-col" style={{ background: "var(--bg-primary)" }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/[0.07] px-5 bg-[#090909]/95 backdrop-blur-sm">
+      <header className="flex h-12 shrink-0 items-center justify-between px-5" style={{
+        borderBottom: "1px solid var(--separator-light)",
+        background: "rgba(0,0,0,0.80)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+      }}>
 
         {/* Left: Brand logo + workflow name */}
-        <div className="flex items-center gap-3.5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="flex items-center gap-2.5 shrink-0">
-            <BrandLogo size={28} />
-            <span className="text-[13px] font-semibold text-white/80 hidden sm:block">Workflow Builder</span>
+            <BrandLogo size={26} />
+            <span className="hidden sm:block" style={{ fontSize: "var(--text-footnote)", fontWeight: 600, color: "var(--text-secondary)" }}>Workflow Builder</span>
           </div>
 
-          <div className="h-4 w-px bg-white/[0.08] hidden sm:block shrink-0" />
+          <div className="hidden sm:block shrink-0" style={{ height: "16px", width: "1px", background: "var(--separator-light)" }} />
 
           {/* Workflow name — editable */}
           <div className="flex items-center gap-2 min-w-0">
@@ -993,25 +998,35 @@ export default function Home() {
                 if (saveStatus === "error") { setSaveStatus("idle"); setStatusMessage(null); }
               }}
               placeholder="Untitled workflow"
-              className="bg-transparent text-[13px] font-medium text-white outline-none placeholder:text-white/25 border-b border-transparent focus:border-white/20 transition-colors min-w-0 max-w-[220px] truncate pb-0.5"
+              className="bg-transparent outline-none min-w-0 max-w-[220px] truncate focus:border-[var(--accent)]"
+              style={{
+                fontSize: "var(--text-footnote)",
+                fontWeight: 500,
+                color: "var(--text-primary)",
+                borderBottom: "1px solid transparent",
+                paddingBottom: "2px",
+                transition: "border-color var(--transition-fast)",
+              }}
             />
           </div>
         </div>
 
         {/* Right: Status + Save + Run + User */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
 
           {/* Save status */}
           {statusMessage && !activeWorkflowRunId && (
-            <span className={`hidden lg:block text-[11px] font-medium transition-all ${
-              saveStatus === "error" ? "text-rose-400" : saveStatus === "saved" ? "text-emerald-400" : "text-zinc-500"
-            }`}>
+            <span className="hidden lg:block transition-all" style={{
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 500,
+              color: saveStatus === "error" ? "var(--destructive)" : saveStatus === "saved" ? "var(--success)" : "var(--text-tertiary)",
+            }}>
               {statusMessage}
             </span>
           )}
 
           {subError && (
-            <span className="text-[11px] text-amber-400 hidden lg:block">⚡ {subError}</span>
+            <span className="hidden lg:block" style={{ fontSize: "var(--text-caption-2)", color: "var(--warning)" }}>⚡ {subError}</span>
           )}
 
           {/* Workflow Guide Button */}
@@ -1020,9 +1035,18 @@ export default function Home() {
             type="button"
             onClick={() => setIsGuideOpen(true)}
             title="Open Workflow Guide"
-            className="rounded-lg border border-white/[0.09] bg-white/[0.03] hover:bg-white/[0.07] px-2.5 py-1.5 text-[12px] font-medium text-zinc-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex items-center gap-1.5 cursor-pointer transition-all"
+            style={{
+              borderRadius: "var(--radius-button)",
+              border: "1px solid var(--separator-light)",
+              background: "transparent",
+              padding: "5px 10px",
+              fontSize: "var(--text-caption)",
+              fontWeight: 500,
+              color: "var(--text-secondary)",
+            }}
           >
-            <span className="text-blue-400 font-bold">💡</span>
+            <span>💡</span>
             <span>Guide</span>
           </button>
 
@@ -1031,7 +1055,14 @@ export default function Home() {
             id="btn-run"
             onClick={handleRunWorkflow}
             disabled={isRunningWorkflow || saveStatus === "saving"}
-            className="rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-1.5 text-[12px] font-semibold text-white shadow-md shadow-blue-600/20 disabled:opacity-40 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex items-center gap-1.5 text-white disabled:opacity-40 transition-all cursor-pointer active:scale-[0.98]"
+            style={{
+              borderRadius: "var(--radius-button)",
+              background: "var(--accent)",
+              padding: "5px 14px",
+              fontSize: "var(--text-caption)",
+              fontWeight: 600,
+            }}
           >
             {isRunningWorkflow ? (
               <>
@@ -1051,22 +1082,31 @@ export default function Home() {
             )}
           </button>
 
-          <div className="h-4 w-px bg-white/[0.08]" />
+          <div style={{ height: "16px", width: "1px", background: "var(--separator-light)" }} />
 
           {/* User + Org */}
           <div className="flex items-center gap-2">
             <div className="text-right hidden lg:block">
               <div className="flex items-center justify-end gap-1.5">
-                <span className="text-[12px] font-medium text-white/75 truncate max-w-[160px]">
+                <span className="truncate max-w-[160px]" style={{ fontSize: "var(--text-caption)", fontWeight: 500, color: "var(--text-secondary)" }}>
                   {user?.displayName || user?.email?.split("@")[0] || "User"}
                 </span>
                 {role && (
-                  <span className="rounded-md bg-blue-500/10 border border-blue-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-blue-400">
+                  <span style={{
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--accent-dim)",
+                    padding: "1px 6px",
+                    fontSize: "9px",
+                    fontWeight: 600,
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.04em",
+                    color: "var(--accent)",
+                  }}>
                     {role}
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-white/25 text-right truncate max-w-[160px]">
+              <p className="text-right truncate max-w-[160px]" style={{ fontSize: "10px", color: "var(--text-tertiary)" }}>
                 {organization?.name || "AI Workflow Builder"}
               </p>
             </div>
@@ -1074,7 +1114,15 @@ export default function Home() {
             <button
               onClick={logout}
               title="Sign out"
-              className="rounded-lg border border-white/[0.08] px-2.5 py-1.5 text-[11px] text-zinc-500 hover:bg-white/5 hover:text-white transition-all"
+              className="transition-all cursor-pointer"
+              style={{
+                borderRadius: "var(--radius-button)",
+                border: "1px solid var(--separator-light)",
+                padding: "5px 10px",
+                fontSize: "var(--text-caption-2)",
+                color: "var(--text-tertiary)",
+                background: "transparent",
+              }}
             >
               Sign out
             </button>
@@ -1085,11 +1133,21 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
-        <aside className="w-56 shrink-0 border-r border-white/[0.06] bg-[#090909] overflow-y-auto flex flex-col">
-          <div className="p-4 flex-1">
+        <aside className="w-56 shrink-0 overflow-y-auto flex flex-col" style={{
+          borderRight: "1px solid var(--separator-light)",
+          background: "var(--bg-primary)",
+        }}>
+          <div className="flex-1" style={{ padding: "var(--space-4)" }}>
 
             {/* Nodes section */}
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+            <p style={{
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 600,
+              textTransform: "uppercase" as const,
+              letterSpacing: "0.06em",
+              color: "var(--text-tertiary)",
+              marginBottom: "var(--space-3)",
+            }}>
               Add Nodes
             </p>
 
@@ -1111,8 +1169,8 @@ export default function Home() {
                 >
                   <span className="text-base shrink-0 w-5 text-center leading-none">{icon}</span>
                   <div className="min-w-0">
-                    <div className="text-[12px] font-medium leading-none text-zinc-200 group-hover:text-white transition-colors">{label}</div>
-                    <div className="text-[10px] text-zinc-600 mt-0.5 group-hover:text-zinc-500 transition-colors">{desc}</div>
+                    <div style={{ fontSize: "var(--text-caption)", fontWeight: 500, lineHeight: 1, color: "var(--text-primary)" }} className="transition-colors">{label}</div>
+                    <div style={{ fontSize: "10px", color: "var(--text-tertiary)", marginTop: "3px" }} className="transition-colors">{desc}</div>
                   </div>
                 </button>
               ))}
@@ -1120,8 +1178,8 @@ export default function Home() {
           </div>
 
           {/* Canvas Lock hint */}
-          <div className="border-t border-white/[0.06] p-4">
-            <p className="text-[9px] text-zinc-700 leading-relaxed">
+          <div style={{ borderTop: "1px solid var(--separator-light)", padding: "var(--space-4)" }}>
+            <p style={{ fontSize: "9px", color: "var(--text-tertiary)", lineHeight: 1.5 }}>
               Select a node to edit its properties. Use the canvas lock to freeze the viewport position.
             </p>
           </div>
@@ -1132,16 +1190,27 @@ export default function Home() {
 
           {/* ── Execution banners ── */}
           {effectiveWorkflowStatus === "paused" && !isBannerDismissed && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl rounded-2xl border border-amber-500/35 bg-[#14110a]/95 backdrop-blur-xl px-4 py-3 shadow-2xl shadow-amber-500/10 animate-fade-in-up">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl animate-fade-in-up" style={{
+              borderRadius: "var(--radius-panel)",
+              border: "1px solid rgba(255,159,10,0.30)",
+              background: "rgba(28,28,30,0.95)",
+              backdropFilter: "blur(20px)",
+              padding: "12px 16px",
+              boxShadow: "var(--shadow-elevated)",
+            }}>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300 text-sm">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center text-sm" style={{
+                    borderRadius: "var(--radius-button)",
+                    background: "var(--warning-dim)",
+                    color: "var(--warning)",
+                  }}>
                     ⏸
                   </div>
                   <div>
-                    <p className="text-[12px] font-semibold text-amber-300">Approval Required</p>
-                    <p className="text-[11px] text-zinc-400 mt-0.5">
-                      Paused at <span className="text-white font-medium">&quot;{pausedStepName}&quot;</span>
+                    <p style={{ fontSize: "var(--text-caption)", fontWeight: 600, color: "var(--warning)" }}>Approval Required</p>
+                    <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", marginTop: "2px" }}>
+                      Paused at <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>&quot;{pausedStepName}&quot;</span>
                     </p>
                   </div>
                 </div>
@@ -1151,17 +1220,25 @@ export default function Home() {
                       type="button"
                       onClick={() => handleApproveStep(pausedStepId)}
                       disabled={isRunningWorkflow}
-                      className="shrink-0 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-3.5 py-2 text-[11px] font-bold text-white shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                      className="shrink-0 text-white transition-all cursor-pointer disabled:opacity-50"
+                      style={{
+                        borderRadius: "var(--radius-button)",
+                        background: "var(--success)",
+                        padding: "6px 14px",
+                        fontSize: "var(--text-caption-2)",
+                        fontWeight: 700,
+                      }}
                     >
                       {isRunningWorkflow ? "Resuming…" : "Approve & Continue"}
                     </button>
                   ) : (
-                    <span className="shrink-0 text-[10px] text-amber-400/60">Owner / Editor required</span>
+                    <span style={{ fontSize: "10px", color: "rgba(255,159,10,0.50)" }} className="shrink-0">Owner / Editor required</span>
                   )}
                   <button
                     type="button"
                     onClick={() => setIsBannerDismissed(true)}
-                    className="text-zinc-400 hover:text-white text-[11px] px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                    className="transition-all cursor-pointer"
+                    style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", padding: "4px 10px", borderRadius: "var(--radius-sm)", background: "transparent", border: "none" }}
                   >
                     Dismiss
                   </button>
@@ -1171,21 +1248,33 @@ export default function Home() {
           )}
 
           {effectiveWorkflowStatus === "completed" && !isBannerDismissed && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl rounded-2xl border border-emerald-500/25 bg-[#0a120d]/95 backdrop-blur-xl px-4 py-3 shadow-xl shadow-emerald-500/8 animate-fade-in-up flex items-center justify-between gap-4">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl animate-fade-in-up flex items-center justify-between gap-4" style={{
+              borderRadius: "var(--radius-panel)",
+              border: "1px solid rgba(48,209,88,0.25)",
+              background: "rgba(28,28,30,0.95)",
+              backdropFilter: "blur(20px)",
+              padding: "12px 16px",
+              boxShadow: "var(--shadow-elevated)",
+            }}>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 text-sm font-bold">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center text-sm font-bold" style={{
+                  borderRadius: "var(--radius-button)",
+                  background: "var(--success-dim)",
+                  color: "var(--success)",
+                }}>
                   ✓
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold text-emerald-400">Workflow Completed</p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">All steps executed successfully</p>
+                  <p style={{ fontSize: "var(--text-caption)", fontWeight: 600, color: "var(--success)" }}>Workflow Completed</p>
+                  <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", marginTop: "2px" }}>All steps executed successfully</p>
                 </div>
               </div>
               <button
                 type="button"
                 id="btn-dismiss-completed"
                 onClick={() => setIsBannerDismissed(true)}
-                className="text-zinc-400 hover:text-white text-[11px] px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                className="transition-all cursor-pointer"
+                style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", padding: "4px 10px", borderRadius: "var(--radius-sm)", background: "transparent", border: "none" }}
               >
                 Dismiss
               </button>
@@ -1193,14 +1282,25 @@ export default function Home() {
           )}
 
           {effectiveWorkflowStatus === "failed" && !isBannerDismissed && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl rounded-2xl border border-rose-500/25 bg-[#120a0c]/95 backdrop-blur-xl px-4 py-3 shadow-xl shadow-rose-500/8 animate-fade-in-up flex items-center justify-between gap-4">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-xl animate-fade-in-up flex items-center justify-between gap-4" style={{
+              borderRadius: "var(--radius-panel)",
+              border: "1px solid rgba(255,69,58,0.25)",
+              background: "rgba(28,28,30,0.95)",
+              backdropFilter: "blur(20px)",
+              padding: "12px 16px",
+              boxShadow: "var(--shadow-elevated)",
+            }}>
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-400 text-sm font-bold">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center text-sm font-bold" style={{
+                  borderRadius: "var(--radius-button)",
+                  background: "var(--destructive-dim)",
+                  color: "var(--destructive)",
+                }}>
                   ✕
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold text-rose-400">Execution Failed</p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 truncate max-w-[340px]">
+                  <p style={{ fontSize: "var(--text-caption)", fontWeight: 600, color: "var(--destructive)" }}>Execution Failed</p>
+                  <p className="truncate max-w-[340px]" style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", marginTop: "2px" }}>
                     {failedStepRun?.error || statusMessage || "A workflow step encountered an error."}
                   </p>
                 </div>
@@ -1209,7 +1309,8 @@ export default function Home() {
                 type="button"
                 id="btn-dismiss-failed"
                 onClick={() => setIsBannerDismissed(true)}
-                className="text-zinc-400 hover:text-white text-[11px] px-2.5 py-1 rounded-lg hover:bg-white/5 transition-all cursor-pointer"
+                className="transition-all cursor-pointer"
+                style={{ fontSize: "var(--text-caption-2)", color: "var(--text-secondary)", padding: "4px 10px", borderRadius: "var(--radius-sm)", background: "transparent", border: "none" }}
               >
                 Dismiss
               </button>
@@ -1228,27 +1329,27 @@ export default function Home() {
               onPaneClick={onPaneClick}
               nodeTypes={nodeTypes}
               fitView
-              attributionPosition="bottom-left"
+              proOptions={{ hideAttribution: true }}
               // Canvas lock: only freezes pan & scroll-zoom; node selection and per-node locks remain independent
               panOnDrag={!isCanvasLocked}
               zoomOnScroll={!isCanvasLocked}
               panOnScroll={false}
-              className="bg-[#090909]"
+              style={{ background: "var(--bg-primary)" }}
             >
               {/* Subtle dot grid */}
               <Background
                 gap={28}
                 size={1}
-                color="rgba(255,255,255,0.06)"
+                color="rgba(255,255,255,0.04)"
               />
 
               {/* Controls — Canvas Lock seamlessly integrated as a unified ControlButton */}
-              <Controls showInteractive={false} className="!bg-[#141414]/90 !border-white/[0.08] !rounded-xl !p-0.5">
+              <Controls showInteractive={false}>
                 <ControlButton
                   onClick={() => setIsCanvasLocked((v) => !v)}
                   title={isCanvasLocked ? "Canvas locked — click to unlock viewport navigation" : "Lock canvas viewport position"}
                   aria-label={isCanvasLocked ? "Unlock canvas" : "Lock canvas"}
-                  className={isCanvasLocked ? "!text-amber-400 !bg-amber-500/20" : "!text-zinc-400 hover:!text-white"}
+                  style={isCanvasLocked ? { color: "var(--warning)", background: "var(--warning-dim)" } : {}}
                 >
                   {isCanvasLocked ? (
                     <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
@@ -1263,9 +1364,9 @@ export default function Home() {
               </Controls>
 
               <MiniMap
-                nodeColor="rgba(59,130,246,0.35)"
-                maskColor="rgba(0,0,0,0.75)"
-                className="!bg-[#111111]/80 !border-white/[0.06] !rounded-xl !shadow-none opacity-80 hover:opacity-100 transition-opacity"
+                nodeColor="rgba(10,132,255,0.30)"
+                maskColor="rgba(0,0,0,0.70)"
+                className="opacity-80 hover:opacity-100 transition-opacity"
               />
             </ReactFlow>
           </div>

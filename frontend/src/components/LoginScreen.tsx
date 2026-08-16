@@ -53,152 +53,167 @@ export function LoginScreen() {
   const isBusy = isSubmitting || isDemoSubmitting;
 
   return (
-    <div className="flex min-h-screen bg-[#080808] text-white overflow-hidden selection:bg-blue-500/30 selection:text-white">
+    <div className="flex min-h-screen text-white overflow-hidden selection:bg-[var(--accent)]/20 selection:text-white"
+         style={{ background: "var(--bg-primary)" }}>
 
-      {/* ── LEFT PANEL (58% / Product Presentation) ── */}
-      <div className="hidden lg:flex flex-[1.2] flex-col justify-between p-10 xl:p-14 relative overflow-hidden bg-[#0a0a0d]">
+      {/* ── LEFT PANEL — Product Presentation ── */}
+      <div className="hidden lg:flex flex-[1.2] flex-col justify-between p-12 xl:p-16 relative overflow-hidden"
+           style={{ background: "var(--bg-secondary)" }}>
 
-        {/* Sliced diagonal / curved background glow layer */}
+        {/* Subtle ambient glow — restrained */}
         <div className="pointer-events-none absolute inset-0">
-          {/* Subtle diagonal split panel overlay */}
           <div
-            className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] opacity-40"
+            className="absolute -top-1/4 -left-1/4 w-[120%] h-[120%] opacity-20"
             style={{
-              background: "radial-gradient(ellipse at 25% 25%, rgba(37,99,235,0.18) 0%, rgba(79,70,229,0.08) 35%, transparent 70%)",
-            }}
-          />
-          {/* Sliced subtle geometric angle */}
-          <div
-            className="absolute top-0 right-0 w-full h-full opacity-[0.03]"
-            style={{
-              backgroundImage: "linear-gradient(135deg, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(45deg, rgba(255,255,255,0.2) 1px, transparent 1px)",
-              backgroundSize: "48px 48px",
+              background: "radial-gradient(ellipse at 30% 30%, rgba(10,132,255,0.12) 0%, transparent 60%)",
             }}
           />
         </div>
 
-        {/* Brand header with primary AI mark + secondary intelligence orbit badge */}
+        {/* Brand header */}
         <div className="relative z-10 flex items-center justify-between animate-fade-in">
-          {/* Primary Brand Mark */}
           <div className="flex items-center gap-3">
             <BrandLogo size={32} />
-            <span className="text-sm font-semibold tracking-tight text-white/90">
+            <span style={{ fontSize: "var(--text-subhead)", fontWeight: 600, color: "var(--text-primary)" }}>
               Workflow Builder
             </span>
-          </div>
-
-          {/* Secondary Complementary AI Intelligence Badge */}
-          <div className="flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-3 py-1 text-[11px] font-medium text-blue-400 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-            </span>
-            <span>Gemini 2.5 Engine</span>
           </div>
         </div>
 
         {/* Hero Content */}
-        <div className="relative z-10 max-w-xl my-auto py-6 animate-fade-in-up">
+        <div className="relative z-10 max-w-xl my-auto py-8 animate-fade-in-up">
 
-          {/* Small eyebrow */}
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-blue-400 mb-3">
-            AI WORKFLOW AUTOMATION
+          {/* Eyebrow */}
+          <p style={{
+            fontSize: "var(--text-caption)",
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase" as const,
+            color: "var(--accent)",
+            marginBottom: "var(--space-3)",
+          }}>
+            AI Workflow Automation
           </p>
 
-          {/* Main headline */}
-          <h1 className="mb-4 text-3xl xl:text-[2.6rem] font-semibold leading-[1.15] tracking-tight text-white">
-            Build intelligent<br />
-            AI workflows visually.
+          {/* Headline */}
+          <h1 style={{
+            fontSize: "clamp(28px, 3vw, 36px)",
+            fontWeight: 600,
+            lineHeight: 1.15,
+            letterSpacing: "-0.02em",
+            color: "var(--text-primary)",
+            marginBottom: "var(--space-4)",
+          }}>
+            Build intelligent{"\u00A0"}AI{"\u00A0"}workflows visually.
           </h1>
 
           {/* Supporting text */}
-          <p className="text-sm leading-relaxed text-zinc-400 max-w-lg mb-8">
+          <p style={{
+            fontSize: "var(--text-subhead)",
+            lineHeight: 1.6,
+            color: "var(--text-secondary)",
+            maxWidth: "480px",
+            marginBottom: "var(--space-8)",
+          }}>
             Connect AI agents, conditions, approvals, APIs, databases, and notifications into one executable workflow.
           </p>
 
-          {/* ── Workflow Preview (Trigger → AI Agent → Condition → Notify) ── */}
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 mb-8 backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-1.5">
+          {/* Workflow Preview — clean cards */}
+          <div style={{
+            borderRadius: "var(--radius-panel)",
+            border: "1px solid var(--separator-light)",
+            background: "rgba(255,255,255,0.02)",
+            padding: "var(--space-4)",
+            marginBottom: "var(--space-8)",
+          }}>
+            <div className="flex items-center justify-between gap-2">
               {[
-                { icon: "⚡", label: "Trigger", type: "Manual / Webhook", color: "border-blue-500/30 bg-blue-500/10 text-blue-400" },
-                { icon: "🤖", label: "AI Agent", type: "Gemini Analysis", color: "border-violet-500/30 bg-violet-500/10 text-violet-400" },
-                { icon: "◆", label: "Condition", type: "Branch Logic", color: "border-amber-500/30 bg-amber-500/10 text-amber-400" },
-                { icon: "📢", label: "Notify", type: "Email via Resend", color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" },
+                { icon: "⚡", label: "Trigger",   type: "Manual / Webhook" },
+                { icon: "🤖", label: "AI Agent",   type: "Gemini Analysis" },
+                { icon: "◆",  label: "Condition",  type: "Branch Logic" },
+                { icon: "📢", label: "Notify",     type: "Email via SendGrid" },
               ].map((step, idx) => (
                 <React.Fragment key={step.label}>
                   {idx > 0 && (
-                    <div className="flex items-center justify-center text-zinc-600 text-xs shrink-0 px-1">
-                      →
-                    </div>
+                    <div style={{ color: "var(--text-tertiary)", fontSize: "var(--text-caption)" }} className="shrink-0 px-1">→</div>
                   )}
-                  <div className="flex-1 min-w-0 rounded-xl border border-white/[0.06] bg-black/40 p-2.5 hover:border-white/15 transition-all">
+                  <div className="flex-1 min-w-0" style={{
+                    borderRadius: "var(--radius-button)",
+                    border: "1px solid var(--separator-light)",
+                    background: "rgba(0,0,0,0.3)",
+                    padding: "10px",
+                  }}>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-sm shrink-0">{step.icon}</span>
-                      <span className="text-xs font-semibold text-white truncate">{step.label}</span>
+                      <span style={{ fontSize: "var(--text-footnote)", fontWeight: 600, color: "var(--text-primary)" }} className="truncate">{step.label}</span>
                     </div>
-                    <p className="text-[10px] text-zinc-500 truncate font-mono">{step.type}</p>
+                    <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }} className="truncate">{step.type}</p>
                   </div>
                 </React.Fragment>
               ))}
             </div>
           </div>
 
-          {/* Feature Metrics */}
-          <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/[0.07]">
-            <div>
-              <div className="text-sm font-semibold text-white">Gemini 2.5</div>
-              <div className="text-[11px] text-zinc-500 mt-0.5">AI Engine</div>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-white">Real-Time</div>
-              <div className="text-[11px] text-zinc-500 mt-0.5">Live Execution</div>
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-white">RBAC</div>
-              <div className="text-[11px] text-zinc-500 mt-0.5">Tenant Security</div>
-            </div>
+          {/* Feature row */}
+          <div className="grid grid-cols-3 gap-6" style={{ paddingTop: "var(--space-6)", borderTop: "1px solid var(--separator-light)" }}>
+            {[
+              { title: "Gemini 2.5", sub: "AI Engine" },
+              { title: "Real-Time", sub: "Live Execution" },
+              { title: "RBAC", sub: "Tenant Security" },
+            ].map((f) => (
+              <div key={f.title}>
+                <div style={{ fontSize: "var(--text-subhead)", fontWeight: 600, color: "var(--text-primary)" }}>{f.title}</div>
+                <div style={{ fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)", marginTop: "2px" }}>{f.sub}</div>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Footer */}
         <div className="relative z-10 animate-fade-in">
-          <p className="text-[11px] text-zinc-600">
-            Powered by Nhost &middot; Hasura GraphQL &middot; Google Gemini &middot; Resend
+          <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)" }}>
+            Powered by Nhost &middot; Hasura GraphQL &middot; Google Gemini &middot; SendGrid
           </p>
         </div>
       </div>
 
-      {/* ── RIGHT PANEL (42% / Authentication Surface) ── */}
-      <div className="flex w-full flex-col items-center justify-center lg:flex-1 lg:max-w-md xl:max-w-lg px-6 sm:px-10 py-12 relative bg-[#0e0e11]">
-        {/* Subtle separator border */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block w-px bg-white/[0.06]" />
+      {/* ── RIGHT PANEL — Authentication ── */}
+      <div className="flex w-full flex-col items-center justify-center lg:flex-1 lg:max-w-md xl:max-w-lg px-8 sm:px-12 py-16 relative"
+           style={{ background: "var(--bg-primary)" }}>
+
+        {/* Separator */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 hidden lg:block w-px" style={{ background: "var(--separator-light)" }} />
 
         <div className="w-full max-w-[340px] animate-scale-in">
 
           {/* Mobile brand header */}
-          <div className="mb-6 flex items-center gap-2.5 lg:hidden">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <BrandLogo size={28} />
-            <span className="text-sm font-semibold text-white">Workflow Builder</span>
+            <span style={{ fontSize: "var(--text-subhead)", fontWeight: 600 }}>Workflow Builder</span>
           </div>
 
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold tracking-tight text-white">Sign In</h2>
-            <p className="mt-1 text-xs text-zinc-400">
+          <div className="mb-8">
+            <h2 style={{ fontSize: "var(--text-title-3)", fontWeight: 600, letterSpacing: "-0.01em" }}>Sign In</h2>
+            <p style={{ fontSize: "var(--text-footnote)", color: "var(--text-secondary)", marginTop: "var(--space-1)" }}>
               Enter your credentials or launch the instant demo
             </p>
           </div>
 
-          {/* ── Primary Action: Try Demo ── */}
+          {/* ── Try Demo — Primary CTA ── */}
           <button
             id="btn-try-demo"
             type="button"
             onClick={handleTryDemo}
             disabled={isBusy}
-            className="group w-full relative flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-950/40 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.99] disabled:opacity-50 transition-all duration-150 cursor-pointer overflow-hidden"
+            className="w-full flex items-center justify-center gap-2.5 text-white disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
+            style={{
+              borderRadius: "var(--radius-card)",
+              padding: "13px 20px",
+              fontSize: "var(--text-subhead)",
+              fontWeight: 600,
+              background: "var(--accent)",
+            }}
           >
-            {/* Shimmer overlay */}
-            <div className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-
             {isDemoSubmitting ? (
               <>
                 <svg className="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -216,31 +231,57 @@ export function LoginScreen() {
               </>
             )}
           </button>
-          <p className="mt-2 mb-5 text-center text-[11px] text-zinc-400 font-medium">
+          <p style={{
+            fontSize: "var(--text-caption-2)",
+            color: "var(--text-secondary)",
+            textAlign: "center" as const,
+            marginTop: "var(--space-2)",
+            marginBottom: "var(--space-5)",
+          }}>
             Instant demo access &middot; No setup required
           </p>
 
           {/* Divider */}
-          <div className="relative mb-5 flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/[0.07]" />
-            <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">
+          <div className="relative flex items-center gap-3" style={{ marginBottom: "var(--space-5)" }}>
+            <div className="flex-1 h-px" style={{ background: "var(--separator-light)" }} />
+            <span style={{
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 500,
+              color: "var(--text-tertiary)",
+              textTransform: "uppercase" as const,
+              letterSpacing: "0.06em",
+            }}>
               or email sign in
             </span>
-            <div className="flex-1 h-px bg-white/[0.07]" />
+            <div className="flex-1 h-px" style={{ background: "var(--separator-light)" }} />
           </div>
 
           {/* Error Alert */}
           {errorMessage && (
-            <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-xs text-rose-300 animate-fade-in">
-              <p className="font-semibold mb-0.5">Authentication error</p>
-              <p className="text-rose-300/80">{errorMessage}</p>
+            <div className="animate-fade-in" style={{
+              marginBottom: "var(--space-4)",
+              borderRadius: "var(--radius-button)",
+              border: "1px solid rgba(255,69,58,0.30)",
+              background: "var(--destructive-dim)",
+              padding: "10px 14px",
+              fontSize: "var(--text-footnote)",
+              color: "#FF6961",
+            }}>
+              <p style={{ fontWeight: 600, marginBottom: "2px" }}>Authentication error</p>
+              <p style={{ opacity: 0.85 }}>{errorMessage}</p>
             </div>
           )}
 
           {/* Credential Form */}
-          <form onSubmit={handleSubmit} className="space-y-3.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="login-email" className="mb-1 block text-xs font-medium text-zinc-300">
+              <label htmlFor="login-email" style={{
+                display: "block",
+                fontSize: "var(--text-footnote)",
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+                marginBottom: "var(--space-2)",
+              }}>
                 Email Address
               </label>
               <input
@@ -251,12 +292,29 @@ export function LoginScreen() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 disabled={isBusy}
-                className="w-full rounded-xl border border-white/[0.09] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/40 disabled:opacity-40 transition-all"
+                style={{
+                  width: "100%",
+                  borderRadius: "var(--radius-input)",
+                  border: "1px solid var(--separator-light)",
+                  background: "var(--bg-tertiary)",
+                  padding: "10px 14px",
+                  fontSize: "var(--text-subhead)",
+                  color: "var(--text-primary)",
+                  outline: "none",
+                  transition: "border-color var(--transition-fast)",
+                }}
+                className="placeholder:text-[rgba(235,235,245,0.25)] focus:border-[var(--accent)] disabled:opacity-40"
               />
             </div>
 
             <div>
-              <label htmlFor="login-password" className="mb-1 block text-xs font-medium text-zinc-300">
+              <label htmlFor="login-password" style={{
+                display: "block",
+                fontSize: "var(--text-footnote)",
+                fontWeight: 500,
+                color: "var(--text-secondary)",
+                marginBottom: "var(--space-2)",
+              }}>
                 Password
               </label>
               <input
@@ -267,7 +325,18 @@ export function LoginScreen() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 disabled={isBusy}
-                className="w-full rounded-xl border border-white/[0.09] bg-white/[0.03] px-3.5 py-2.5 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500/70 focus:ring-1 focus:ring-blue-500/40 disabled:opacity-40 transition-all"
+                style={{
+                  width: "100%",
+                  borderRadius: "var(--radius-input)",
+                  border: "1px solid var(--separator-light)",
+                  background: "var(--bg-tertiary)",
+                  padding: "10px 14px",
+                  fontSize: "var(--text-subhead)",
+                  color: "var(--text-primary)",
+                  outline: "none",
+                  transition: "border-color var(--transition-fast)",
+                }}
+                className="placeholder:text-[rgba(235,235,245,0.25)] focus:border-[var(--accent)] disabled:opacity-40"
               />
             </div>
 
@@ -275,7 +344,16 @@ export function LoginScreen() {
               id="btn-sign-in"
               type="submit"
               disabled={isBusy}
-              className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 active:scale-[0.99] disabled:opacity-40 transition-all cursor-pointer flex items-center justify-center gap-2 mt-1"
+              className="w-full text-white disabled:opacity-40 transition-all cursor-pointer active:scale-[0.99] flex items-center justify-center gap-2"
+              style={{
+                borderRadius: "var(--radius-card)",
+                padding: "11px 20px",
+                fontSize: "var(--text-subhead)",
+                fontWeight: 600,
+                background: "var(--bg-tertiary)",
+                border: "1px solid var(--separator-light)",
+                marginTop: "var(--space-1)",
+              }}
             >
               {isSubmitting ? (
                 <>
@@ -291,9 +369,14 @@ export function LoginScreen() {
             </button>
           </form>
 
-          {/* Footer note */}
-          <div className="mt-6 border-t border-white/[0.06] pt-3 text-center">
-            <p className="text-[10px] text-zinc-600">
+          {/* Footer */}
+          <div style={{
+            marginTop: "var(--space-6)",
+            paddingTop: "var(--space-3)",
+            borderTop: "1px solid var(--separator-light)",
+            textAlign: "center" as const,
+          }}>
+            <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)" }}>
               Singapore (ap-southeast-1) &middot; Encrypted Session
             </p>
           </div>

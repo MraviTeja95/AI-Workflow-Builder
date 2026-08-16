@@ -183,10 +183,10 @@ async function runNotifyTests() {
   assertTest("step_runs.output has delivery confirmation", notifyStepRun?.output?.success === true && !!notifyStepRun?.output?.messageId, `MessageId: ${notifyStepRun?.output?.messageId}`);
 
   // -------------------------------------------------------------------
-  // TEST 3: Email Channel Syntax Validation & Delivery
+  // TEST 3: Email Channel Syntax Validation & Delivery (SendGrid)
   // -------------------------------------------------------------------
-  console.log("\n▶ TEST 3: Email channel delivery & credential validation");
-  const hasEmailCreds = !!(env.RESEND_API_KEY && env.EMAIL_FROM);
+  console.log("\n▶ TEST 3: Email channel delivery & credential validation (SendGrid)");
+  const hasEmailCreds = !!(env.SENDGRID_API_KEY);
   const emailWfRes = await fetch(`${APP_URL}/api/workflows`, {
     method: "POST",
     headers: ownerHeaders,
@@ -209,8 +209,8 @@ async function runNotifyTests() {
             config: {
               notify: {
                 channel: "Email",
-                recipient: env.TEST_EMAIL_RECIPIENT || "delivered@resend.dev",
-                message: "Deployment successful to production via Resend.",
+                recipient: env.TEST_EMAIL_RECIPIENT || "mraviteja876@gmail.com",
+                message: "Deployment successful to production via SendGrid.",
               },
             },
           },
@@ -232,7 +232,7 @@ async function runNotifyTests() {
 
   const runEmailData = await runEmailRes.json();
   if (hasEmailCreds) {
-    assertTest("Email workflow run completed via Resend", runEmailRes.status === 200 && runEmailData.status === "completed", `Status: ${runEmailData.status}`);
+    assertTest("Email workflow run completed via SendGrid", runEmailRes.status === 200 && runEmailData.status === "completed", `Status: ${runEmailData.status}`);
     const emailStepRunRes = await queryGraphQLAdmin(`
       query GetEmailStepRun($runId: uuid!) {
         step_runs(where: { workflow_run_id: { _eq: $runId } }) {
@@ -246,9 +246,9 @@ async function runNotifyTests() {
     const emailStepRun = emailStepRunRes.data?.step_runs?.[0];
     const isRealMsgId = emailStepRun?.output?.messageId && !emailStepRun?.output?.messageId.startsWith("notif_");
     assertTest("Email step output contains provider message ID", !!isRealMsgId, `MessageId: ${emailStepRun?.output?.messageId}`);
-    assertTest("Email step output details provider is Resend", emailStepRun?.output?.details?.provider === "Resend", `Provider: ${emailStepRun?.output?.details?.provider}`);
+    assertTest("Email step output details provider is SendGrid", emailStepRun?.output?.details?.provider === "SendGrid", `Provider: ${emailStepRun?.output?.details?.provider}`);
   } else {
-    assertTest("Missing credentials correctly fails email step without claiming fake delivery", runEmailData.status === "failed" && String(runEmailData.message || "").includes("Email notification is not configured"), `Real email integration not configured (Message: ${runEmailData.message})`);
+    assertTest("Missing credentials correctly fails email step without claiming fake delivery", runEmailData.status === "failed" && String(runEmailData.message || "").includes("SendGrid API key is not configured"), `Real email integration not configured (Message: ${runEmailData.message})`);
   }
 
   // -------------------------------------------------------------------

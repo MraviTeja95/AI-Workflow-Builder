@@ -89,12 +89,20 @@ export function ExecutionTimeline({
   };
 
   const renderStepStatusPill = (status?: string, isCondition?: boolean, liveStepRun?: StepRun) => {
+    const pillBase: React.CSSProperties = {
+      fontSize: "10px",
+      fontWeight: 600,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "4px",
+    };
+
     if (status === "running") {
       return (
-        <span className="flex items-center gap-1 text-[10px] font-semibold text-blue-400">
+        <span style={{ ...pillBase, color: "var(--accent)" }}>
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: "var(--accent)" }} />
+            <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: "var(--accent)" }} />
           </span>
           Running
         </span>
@@ -108,68 +116,88 @@ export function ExecutionTimeline({
           liveStepRun?.output?.selectedBranch === "true" ||
           liveStepRun?.output?.branch === "true";
         return (
-          <span className={`text-[10px] font-bold ${isTrue ? "text-emerald-400" : "text-rose-400"}`}>
+          <span style={{ ...pillBase, fontWeight: 700, color: isTrue ? "var(--success)" : "var(--destructive)" }}>
             {isTrue ? "✓ TRUE" : "✓ FALSE"}
           </span>
         );
       }
-      return <span className="text-[10px] font-semibold text-emerald-400">✓ Done</span>;
+      return <span style={{ ...pillBase, color: "var(--success)" }}>✓ Done</span>;
     }
     if (status === "paused") {
-      return <span className="text-[10px] font-semibold text-amber-300">⏸ Waiting</span>;
+      return <span style={{ ...pillBase, color: "var(--warning)" }}>⏸ Waiting</span>;
     }
     if (status === "failed") {
-      return <span className="text-[10px] font-semibold text-rose-400">✕ Failed</span>;
+      return <span style={{ ...pillBase, color: "var(--destructive)" }}>✕ Failed</span>;
     }
     if (status === "skipped") {
-      return <span className="text-[10px] text-zinc-600 line-through">Skipped</span>;
+      return <span style={{ ...pillBase, color: "var(--text-tertiary)", textDecoration: "line-through" }}>Skipped</span>;
     }
-    return <span className="text-[10px] text-zinc-500 font-medium">○ Pending</span>;
+    return <span style={{ ...pillBase, color: "var(--text-tertiary)" }}>○ Pending</span>;
   };
 
+  // Workflow status pill style
+  const statusPill = (label: string, color: string, dimColor: string, pulseDot?: boolean) => (
+    <span className="flex items-center gap-1.5" style={{
+      borderRadius: "99px",
+      background: dimColor,
+      border: `1px solid ${color}25`,
+      padding: "2px 10px",
+      fontSize: "10px",
+      fontWeight: 500,
+      color,
+    }}>
+      {pulseDot && <span className="h-1.5 w-1.5 rounded-full animate-ping" style={{ background: color }} />}
+      {label}
+    </span>
+  );
+
   return (
-    <div className="w-full border-t border-white/[0.06] bg-[#0c0c0e] px-5 py-2.5 shrink-0 select-none">
+    <div className="w-full shrink-0 select-none" style={{
+      borderTop: "1px solid var(--separator-light)",
+      background: "var(--bg-secondary)",
+      padding: "10px 20px",
+    }}>
       {/* Execution Status Header Row */}
-      <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center justify-between" style={{ marginBottom: "6px" }}>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+          <span style={{
+            fontSize: "10px",
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.06em",
+            color: "var(--text-secondary)",
+          }}>
             Execution
           </span>
-          <span className="text-[11px] font-mono text-zinc-300 font-medium">
+          <span style={{ fontSize: "var(--text-caption-2)", fontFamily: "var(--font-mono)", color: "var(--text-primary)", fontWeight: 500 }}>
             {completedSteps} / {totalSteps}
           </span>
-          <span className="text-[11px] font-mono text-blue-400 font-semibold">
+          <span style={{ fontSize: "var(--text-caption-2)", fontFamily: "var(--font-mono)", color: "var(--accent)", fontWeight: 600 }}>
             {progressPercent}%
           </span>
-          {workflowStatus === "running" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-[10px] font-medium text-blue-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-ping" />
-              Executing
-            </span>
-          )}
-          {workflowStatus === "paused" && (
-            <span className="flex items-center gap-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-300">
-              ⏸ Paused
-            </span>
-          )}
-          {workflowStatus === "completed" && (
-            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-              ✓ Completed
-            </span>
-          )}
-          {workflowStatus === "failed" && (
-            <span className="flex items-center gap-1 rounded-full bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-400">
-              ✕ Failed
-            </span>
-          )}
+          {workflowStatus === "running" && statusPill("Executing", "var(--accent)", "var(--accent-dim)", true)}
+          {workflowStatus === "paused" && statusPill("⏸ Paused", "var(--warning)", "var(--warning-dim)")}
+          {workflowStatus === "completed" && statusPill("✓ Completed", "var(--success)", "var(--success-dim)")}
+          {workflowStatus === "failed" && statusPill("✕ Failed", "var(--destructive)", "var(--destructive-dim)")}
         </div>
       </div>
 
-      {/* Thin live progress bar */}
-      <div className="w-full h-1 bg-white/[0.06] rounded-full overflow-hidden mb-2.5">
+      {/* Progress bar */}
+      <div className="w-full overflow-hidden" style={{
+        height: "3px",
+        background: "rgba(255,255,255,0.06)",
+        borderRadius: "99px",
+        marginBottom: "10px",
+      }}>
         <div
-          className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-300 ease-out rounded-full"
-          style={{ width: `${progressPercent}%` }}
+          className="h-full transition-all"
+          style={{
+            width: `${progressPercent}%`,
+            background: "var(--accent)",
+            borderRadius: "99px",
+            transitionDuration: "300ms",
+            transitionTimingFunction: "ease-out",
+          }}
         />
       </div>
 
@@ -183,33 +211,55 @@ export function ExecutionTimeline({
           const isPaused = status === "paused";
           const isCondition = node.data.nodeType === "condition";
 
-          const cardClass = isSelected
-            ? "border-blue-500/60 bg-blue-500/8 ring-1 ring-blue-500/20"
+          const cardBorder = isSelected
+            ? "var(--accent)"
             : isPaused
-            ? "border-amber-500/40 bg-amber-500/6 ring-1 ring-amber-500/20"
+            ? "var(--warning)"
             : status === "completed"
-            ? "border-emerald-500/25 bg-emerald-500/[0.03] hover:border-emerald-500/40"
+            ? "rgba(48,209,88,0.25)"
             : status === "running"
-            ? "border-blue-500/40 bg-blue-500/6"
+            ? "rgba(10,132,255,0.35)"
             : status === "failed"
-            ? "border-rose-500/30 bg-rose-500/4"
-            : "border-white/[0.06] bg-white/[0.015] opacity-60 hover:opacity-90 hover:border-white/12";
+            ? "rgba(255,69,58,0.25)"
+            : "var(--separator-light)";
+
+          const cardBg = isSelected
+            ? "var(--accent-dim)"
+            : isPaused
+            ? "var(--warning-dim)"
+            : status === "completed"
+            ? "var(--success-dim)"
+            : status === "running"
+            ? "var(--accent-dim)"
+            : status === "failed"
+            ? "var(--destructive-dim)"
+            : "rgba(255,255,255,0.02)";
 
           return (
             <React.Fragment key={node.id}>
               {index > 0 && (
-                <div className="h-px w-3 shrink-0 bg-white/10" />
+                <div className="shrink-0" style={{ width: "12px", height: "1px", background: "var(--separator-light)" }} />
               )}
 
               <div
                 onClick={() => onSelectNode(node.id)}
-                className={`group shrink-0 cursor-pointer rounded-xl border px-3 py-2 transition-all duration-150 min-w-[145px] max-w-[190px] ${cardClass}`}
+                className="group shrink-0 cursor-pointer transition-all"
+                style={{
+                  borderRadius: "var(--radius-button)",
+                  border: `1px solid ${cardBorder}`,
+                  background: cardBg,
+                  padding: "8px 12px",
+                  minWidth: "145px",
+                  maxWidth: "190px",
+                  opacity: !status && !isSelected ? 0.6 : 1,
+                  transitionDuration: "150ms",
+                }}
               >
                 {/* Header: icon + name + status pill */}
-                <div className="flex items-center justify-between gap-1.5 mb-1">
+                <div className="flex items-center justify-between gap-1.5" style={{ marginBottom: "4px" }}>
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-xs shrink-0 leading-none">{node.data.icon}</span>
-                    <span className="text-[11px] font-medium text-white truncate">
+                    <span className="shrink-0 leading-none" style={{ fontSize: "var(--text-caption)" }}>{node.data.icon}</span>
+                    <span className="truncate" style={{ fontSize: "var(--text-caption-2)", fontWeight: 500, color: "var(--text-primary)" }}>
                       {node.data.label}
                     </span>
                   </div>
@@ -220,14 +270,19 @@ export function ExecutionTimeline({
 
                 {/* Summary / Result preview */}
                 {summary && (
-                  <p className="text-[10px] text-zinc-400 truncate font-mono mt-0.5">
+                  <p className="truncate" style={{
+                    fontSize: "10px",
+                    color: "var(--text-tertiary)",
+                    fontFamily: "var(--font-mono)",
+                    marginTop: "2px",
+                  }}>
                     {summary}
                   </p>
                 )}
 
                 {/* Inline approval action when paused */}
                 {isPaused && (
-                  <div className="mt-1.5 pt-1 border-t border-amber-500/20">
+                  <div style={{ marginTop: "6px", paddingTop: "6px", borderTop: "1px solid rgba(255,159,10,0.20)" }}>
                     {isOwnerOrEditor ? (
                       <button
                         type="button"
@@ -236,12 +291,19 @@ export function ExecutionTimeline({
                           e.stopPropagation();
                           onApproveStep?.(node.data.stepId, stepRun?.id);
                         }}
-                        className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-0.5 text-[10px] font-bold text-white transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1"
+                        className="w-full flex items-center justify-center gap-1 text-white transition-all cursor-pointer disabled:opacity-50"
+                        style={{
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--success)",
+                          padding: "3px 0",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                        }}
                       >
                         Approve & Continue
                       </button>
                     ) : (
-                      <span className="text-[9px] text-amber-400/60 block text-center">
+                      <span style={{ fontSize: "9px", color: "rgba(255,159,10,0.50)", display: "block", textAlign: "center" as const }}>
                         Requires Owner / Editor
                       </span>
                     )}

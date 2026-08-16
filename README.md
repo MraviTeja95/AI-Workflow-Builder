@@ -11,7 +11,7 @@ AI Agent Workflow Builder is a full-stack visual automation platform for designi
 - **AI Agent (Gemini Integration)**: Autonomous LLM reasoning powered by Google Gemini with prompt customization, context injection, and token tracking.
 - **Conditional Branching**: Dynamic branching supporting both structured field comparisons (contains, equals, starts with, regex) and sandboxed boolean expressions.
 - **Human-in-the-Loop Approval Gate**: Pauses workflow execution at sensitive checkpoints until authorized by an organization Owner or Editor.
-- **Multi-Channel Notifications**: Real-time dispatching to Email (via Resend), Webhook endpoints, and Slack channels with delivery verification.
+- **Multi-Channel Notifications**: Real-time dispatching to Email (via SendGrid), Webhook endpoints, and Slack channels with delivery verification.
 - **Database Operations (DB Write)**: Direct SQL execution and record insertion into PostgreSQL with dynamic parameter interpolation.
 - **HTTP Request Action**: Configurable REST client supporting GET, POST, PUT, and DELETE methods with custom headers and payload interpolation.
 - **Real-Time Execution Observability**: Live execution timeline showing step-by-step progress (0/4, 1/4, 2/4, etc.), elapsed duration, and live status pulses.
@@ -54,7 +54,7 @@ graph LR
 | **AI Agent** | `ai_agent` / `llm_call` | Executes generative AI prompts with Google Gemini. Configures model, system prompt, user prompt, and temperature. |
 | **Condition** | `condition` / `conditional_branch` | Evaluates inputs to split execution paths into **TRUE** and **FALSE** branches. Supports structured rules and custom expressions. |
 | **Approval Gate** | `approval_gate` | Pauses execution awaiting authorized sign-off. Enforces role-based permissions (`Owner`, `Editor`) with timeout configuration. |
-| **Notify** | `notify` | Dispatches notifications via **Email** (Resend), **Webhook** (HTTP POST), or **Slack**. Includes payload formatting. |
+| **Notify** | `notify` | Dispatches notifications via **Email** (SendGrid), **Webhook** (HTTP POST), or **Slack**. Includes payload formatting. |
 | **Database Write** | `database` / `db_write` | Executes SQL queries and table insertions against PostgreSQL with variable interpolation. |
 | **HTTP Request** | `http_request` | Dispatches outbound HTTP requests to third-party APIs with configurable headers, methods, and JSON body payloads. |
 
@@ -80,9 +80,9 @@ The AI Agent node integrates with the Google Gemini API to analyze incoming payl
 
 The notification engine supports three delivery channels:
 
-### 1. Email (Resend)
-- Sends HTML/text emails through the Resend API.
-- Configured via server-side environment variables (`RESEND_API_KEY`, `EMAIL_FROM`).
+### 1. Email (SendGrid)
+- Sends HTML/text emails through the SendGrid API.
+- Configured via server-side environment variables (`SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME`).
 - Enforces email address format validation.
 - Captures delivery message IDs and provider status codes.
 - Implements transient network retries with exponential backoff while failing fast on permanent client errors (HTTP 4xx).
@@ -106,7 +106,7 @@ The notification engine supports three delivery channels:
   - **Owner**: Full access to create, edit, execute workflows, manage organization members, and approve gates. Privileged steps (`db_write`, `notify`, `webhook`) require Owner permissions to configure.
   - **Editor**: Can create and edit workflows, run pipelines, and approve gates.
   - **Viewer**: Read-only access to view workflows and execution runs.
-- **Credential Protection**: API keys (Gemini, Resend, Hasura Admin Secret) and database credentials are strictly isolated to server-side environments and never bundled into client JavaScript.
+- **Credential Protection**: API keys (Gemini, SendGrid, Hasura Admin Secret) and database credentials are strictly isolated to server-side environments and never bundled into client JavaScript.
 - **Sandboxed Expression Evaluator**: Condition expressions are evaluated within a secure, isolated scope that strips access to `process`, `window`, `global`, `require`, and prototype chains.
 
 ---
@@ -149,7 +149,7 @@ The platform provides comprehensive execution monitoring:
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
 - **Authentication & Backend**: [Nhost](https://nhost.io/) (Nhost Auth, Hasura GraphQL Engine, PostgreSQL)
 - **AI Intelligence**: [Google Gemini API](https://ai.google.dev/)
-- **Email Delivery**: [Resend](https://resend.com/)
+- **Email Delivery**: [SendGrid](https://sendgrid.com/)
 
 ---
 
@@ -273,7 +273,7 @@ node --experimental-strip-types scripts/test-approval-gate-graph-order.mjs
 
 ## Error Handling & Reliability
 
-- **Transient Network Retries**: Server-side dispatches to Resend, Webhooks, and Hasura GraphQL employ exponential backoff retries (up to 3 attempts) for transient TCP resets or network timeouts (`fetch failed`, `ECONNRESET`, 5xx responses).
+- **Transient Network Retries**: Server-side dispatches to SendGrid, Webhooks, and Hasura GraphQL employ exponential backoff retries (up to 3 attempts) for transient TCP resets or network timeouts (`fetch failed`, `ECONNRESET`, 5xx responses).
 - **Fast-Fail on Permanent Errors**: 4xx client errors (e.g. 400 Bad Request, 403 Forbidden, 422 Invalid Format) fail immediately on the first attempt to prevent duplicate actions or provider spamming.
 - **Bounded Timeouts**: All outbound server requests are guarded with `AbortSignal.timeout` bounds (10s–20s) to prevent hanging serverless instances.
 - **Atomic Run Guard**: The UI execution handler uses atomic reference locks (`isRunningWorkflowRef`) to prevent duplicate runs from rapid double-clicks.
@@ -283,9 +283,10 @@ node --experimental-strip-types scripts/test-approval-gate-graph-order.mjs
 
 ## Security Notes
 
-1. **Secret Isolation**: All API keys (`GEMINI_API_KEY`, `RESEND_API_KEY`, `HASURA_GRAPHQL_ADMIN_SECRET`) remain strictly server-side.
+1. **Secret Isolation**: All API keys (`GEMINI_API_KEY`, `SENDGRID_API_KEY`, `HASURA_GRAPHQL_ADMIN_SECRET`) remain strictly server-side.
 2. **Environment Template**: Use `.env.example` as the basis for deployments; `.env.local` is ignored by Git.
 3. **Database Security**: Database writes validate authorized permissions and sanitize SQL operations to prevent injection attacks.
 4. **Sandboxed Expressions**: Client-submitted condition expressions cannot access global runtime objects or execute unauthorized system commands.
+
 <img width="1912" height="862" alt="Screenshot 2026-08-14 165206" src="https://github.com/user-attachments/assets/509629fb-4792-4533-be93-c5cb15b21ac9" />
 <img width="1912" height="868" alt="Screenshot 2026-08-14 165220" src="https://github.com/user-attachments/assets/8a5b0af4-81ae-4368-9739-73e577316d43" />

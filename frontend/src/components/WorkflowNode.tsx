@@ -25,35 +25,50 @@ export function WorkflowNode({
   const isLocked    = Boolean(data.locked);
   const typeLabel   = NODE_TYPE_LABELS[data.nodeType] ?? "Node";
 
-  /* ── Border / ring ────────────────────────────────────────────────── */
-  const ringClass =
-    status === "running"
-      ? "border-amber-500/70 ring-1 ring-amber-500/30 shadow-amber-500/10 shadow-lg"
-      : status === "completed"
-      ? "border-emerald-500/50"
-      : status === "failed"
-      ? "border-rose-500/70 ring-1 ring-rose-500/30 shadow-rose-500/10 shadow-lg"
-      : status === "paused"
-      ? "border-amber-400/60 ring-1 ring-amber-400/25 animate-pulse"
-      : status === "skipped"
-      ? "border-white/5 opacity-50"
-      : status === "queued"
-      ? "border-blue-500/30"
-      : selected
-      ? "border-blue-500/80 ring-2 ring-blue-500/25 shadow-lg shadow-blue-500/10"
-      : isLocked
-      ? "border-amber-500/30"
-      : "border-white/[0.08] hover:border-white/20";
+  /* ── Border / ring — Apple-style subtle indicators ───────────────── */
+  const cardBorderColor = (() => {
+    if (status === "running")   return "var(--accent)";
+    if (status === "completed") return "var(--success)";
+    if (status === "failed")    return "var(--destructive)";
+    if (status === "paused")    return "var(--warning)";
+    if (status === "skipped")   return "transparent";
+    if (status === "queued")    return "rgba(10,132,255,0.25)";
+    if (selected)               return "var(--accent)";
+    if (isLocked)               return "rgba(255,159,10,0.25)";
+    return "var(--separator-light)";
+  })();
+
+  const cardBoxShadow = (() => {
+    if (status === "running") return "0 0 0 1px rgba(10,132,255,0.25)";
+    if (status === "failed")  return "0 0 0 1px rgba(255,69,58,0.25)";
+    if (status === "paused")  return "0 0 0 1px rgba(255,159,10,0.20)";
+    if (selected)             return "0 0 0 2px rgba(10,132,255,0.20)";
+    return "var(--shadow-subtle)";
+  })();
+
+  const cardOpacity = status === "skipped" ? 0.5 : 1;
 
   /* ── Status badge ─────────────────────────────────────────────────── */
   const renderStatusBadge = () => {
     if (!status) return null;
+
+    const badgeBase: React.CSSProperties = {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "5px",
+      borderRadius: "var(--radius-sm)",
+      padding: "2px 8px",
+      fontSize: "var(--text-caption-2)",
+      fontWeight: 500,
+    };
+
     if (status === "running") return (
-      <span className="flex items-center gap-1.5 rounded-md bg-amber-500/12 border border-amber-500/25 px-2 py-0.5 text-[11px] font-medium text-amber-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+      <span style={{ ...badgeBase, background: "var(--accent-dim)", color: "var(--accent)" }}>
+        <span className="h-1.5 w-1.5 rounded-full animate-subtle-pulse" style={{ background: "var(--accent)" }} />
         Running
       </span>
     );
+
     if (status === "completed" && isCondition) {
       const isTrue =
         data.liveStepRun?.output?.evaluatedValue === true ||
@@ -61,51 +76,65 @@ export function WorkflowNode({
         data.liveStepRun?.output?.selectedBranch === "true" ||
         data.liveStepRun?.output?.branch === "true";
       return (
-        <span className={`flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border ${
-          isTrue
-            ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-            : "text-rose-400 bg-rose-500/10 border-rose-500/30"
-        }`}>
+        <span style={{
+          ...badgeBase,
+          background: isTrue ? "var(--success-dim)" : "var(--destructive-dim)",
+          color: isTrue ? "var(--success)" : "var(--destructive)",
+          fontWeight: 600,
+        }}>
           {isTrue ? "→ TRUE" : "→ FALSE"}
         </span>
       );
     }
+
     if (status === "completed") return (
-      <span className="flex items-center gap-1 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+      <span style={{ ...badgeBase, background: "var(--success-dim)", color: "var(--success)" }}>
         ✓ Done
       </span>
     );
+
     if (status === "failed") return (
-      <span title={data.executionError || "Step failed"} className="rounded-md bg-rose-500/10 border border-rose-500/25 px-2 py-0.5 text-[11px] font-medium text-rose-400 truncate max-w-[160px]">
+      <span title={data.executionError || "Step failed"} style={{ ...badgeBase, background: "var(--destructive-dim)", color: "var(--destructive)" }} className="truncate max-w-[160px]">
         ✕ Failed
       </span>
     );
+
     if (status === "paused") return (
       <div className="flex items-center justify-between gap-2 w-full">
-        <span className="flex items-center gap-1.5 rounded-md bg-amber-500/12 border border-amber-500/30 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+        <span style={{ ...badgeBase, background: "var(--warning-dim)", color: "var(--warning)" }}>
           ⏸ Waiting
         </span>
         {(data.userRole === "owner" || data.userRole === "editor") && data.onApprove && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); data.onApprove?.(data.stepId, data.liveStepRun?.id); }}
-            className="flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 px-2.5 py-0.5 text-[11px] font-semibold text-white transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1 text-white transition-all cursor-pointer"
+            style={{
+              borderRadius: "var(--radius-sm)",
+              background: "var(--success)",
+              padding: "2px 10px",
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 600,
+            }}
           >
             Approve
           </button>
         )}
       </div>
     );
+
     if (status === "queued") return (
-      <span className="rounded-md bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] font-medium text-zinc-500">
+      <span style={{ ...badgeBase, background: "rgba(255,255,255,0.04)", color: "var(--text-tertiary)" }}>
         ⏱ Queued
       </span>
     );
+
     if (status === "skipped") return (
-      <span className="rounded-md bg-white/5 border border-white/5 px-2 py-0.5 text-[11px] font-medium text-zinc-600 line-through">
+      <span style={{ ...badgeBase, background: "rgba(255,255,255,0.03)", color: "var(--text-tertiary)", textDecoration: "line-through" }}>
         Skipped
       </span>
     );
+
     return null;
   };
 
@@ -119,7 +148,17 @@ export function WorkflowNode({
         offset={10}
       >
         <div
-          className="flex items-center gap-1 rounded-xl border border-white/15 bg-[#181818]/95 px-2 py-1 shadow-2xl backdrop-blur-md select-none whitespace-nowrap transition-all"
+          className="flex items-center gap-1 select-none whitespace-nowrap"
+          style={{
+            borderRadius: "var(--radius-card)",
+            borderWidth: "1px",
+            borderStyle: "solid",
+            borderColor: "var(--separator)",
+            background: "rgba(28,28,30,0.94)",
+            backdropFilter: "blur(16px)",
+            padding: "4px 6px",
+            boxShadow: "var(--shadow-elevated)",
+          }}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
@@ -127,11 +166,19 @@ export function WorkflowNode({
             type="button"
             title={isLocked ? "Unlock node (allows dragging)" : "Lock node (prevents dragging & deletion)"}
             onClick={(e) => { e.stopPropagation(); data.onLockToggle?.(id); }}
-            className={`flex h-7 items-center gap-1 px-2 rounded-lg text-[11px] font-medium transition-all duration-150 cursor-pointer ${
-              isLocked
-                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
-                : "text-zinc-300 hover:bg-white/10 hover:text-white"
-            }`}
+            className="flex items-center gap-1 cursor-pointer transition-all"
+            style={{
+              height: "28px",
+              padding: "0 8px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 500,
+              background: isLocked ? "var(--warning-dim)" : "transparent",
+              color: isLocked ? "var(--warning)" : "var(--text-secondary)",
+              borderWidth: "1px",
+              borderStyle: "solid",
+              borderColor: isLocked ? "rgba(255,159,10,0.30)" : "transparent",
+            }}
           >
             {isLocked ? (
               <>
@@ -146,18 +193,24 @@ export function WorkflowNode({
             )}
           </button>
 
-          <div className="h-4 w-px bg-white/10 mx-0.5" />
+          <div style={{ width: "1px", height: "16px", background: "var(--separator-light)", margin: "0 2px" }} />
 
           <button
             type="button"
             title={isLocked ? "Node is locked — unlock first to delete" : "Delete node"}
             onClick={(e) => { e.stopPropagation(); if (!isLocked) data.onDeleteNode?.(id); }}
             disabled={isLocked}
-            className={`flex h-7 items-center gap-1 px-2 rounded-lg text-[11px] font-medium transition-all duration-150 ${
-              isLocked
-                ? "cursor-not-allowed text-zinc-600 opacity-50"
-                : "text-zinc-300 hover:bg-rose-500/15 hover:text-rose-400 cursor-pointer"
-            }`}
+            className="flex items-center gap-1 transition-all"
+            style={{
+              height: "28px",
+              padding: "0 8px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "var(--text-caption-2)",
+              fontWeight: 500,
+              color: isLocked ? "var(--text-tertiary)" : "var(--text-secondary)",
+              cursor: isLocked ? "not-allowed" : "pointer",
+              opacity: isLocked ? 0.5 : 1,
+            }}
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -173,46 +226,65 @@ export function WorkflowNode({
           type="target"
           id="target"
           position={Position.Left}
-          className="!h-2.5 !w-2.5 !border-2 !border-[#181818] !bg-blue-500/80 transition-transform hover:scale-125"
+          className="!h-2.5 !w-2.5 !border-2 !bg-[var(--accent)] transition-transform hover:scale-125"
+          style={{ borderColor: "var(--bg-secondary)" }}
         />
       )}
 
       {/* ── Node Card ─────────────────────────────────────────────── */}
       <div
-        className={`relative min-w-[200px] max-w-[270px] rounded-2xl border bg-[#181818] shadow-xl transition-all duration-150 ${ringClass}`}
+        className="relative min-w-[200px] max-w-[270px] transition-all"
+        style={{
+          borderRadius: "var(--radius-card)",
+          borderWidth: "1px",
+          borderStyle: "solid",
+          borderColor: cardBorderColor,
+          background: "var(--bg-secondary)",
+          boxShadow: cardBoxShadow,
+          opacity: cardOpacity,
+          transitionDuration: "150ms",
+        }}
       >
-        <div className="flex flex-col gap-2 p-3.5">
+        <div className="flex flex-col gap-2" style={{ padding: "14px" }}>
 
           {/* Header row */}
           <div className="flex items-center gap-3">
-            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg transition-all ${
-              selected ? "bg-blue-500/12" : "bg-white/[0.04]"
-            }`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center text-lg transition-all"
+                 style={{
+                   borderRadius: "var(--radius-button)",
+                   background: selected ? "var(--accent-dim)" : "rgba(255,255,255,0.04)",
+                 }}>
               {data.icon}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold leading-snug text-white">
+              <p className="truncate" style={{ fontSize: "var(--text-footnote)", fontWeight: 600, lineHeight: 1.3, color: "var(--text-primary)" }}>
                 {data.label}
               </p>
-              <p className="text-[11px] text-zinc-500 leading-none mt-0.5">{typeLabel}</p>
+              <p style={{ fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)", lineHeight: 1, marginTop: "2px" }}>{typeLabel}</p>
             </div>
 
-            {/* Lock pill */}
+            {/* Lock indicator — small, subtle */}
             {isLocked && (
-              <span className="shrink-0 flex items-center gap-1 rounded-md bg-amber-500/12 border border-amber-500/25 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
+              <span className="shrink-0 flex items-center gap-1" style={{
+                borderRadius: "var(--radius-sm)",
+                background: "var(--warning-dim)",
+                padding: "2px 6px",
+                fontSize: "10px",
+                fontWeight: 500,
+                color: "var(--warning)",
+              }}>
                 <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                Locked
               </span>
             )}
           </div>
 
           {/* Status row */}
           {status && (
-            <div className="border-t border-white/[0.05] pt-2 flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2" style={{ borderTopWidth: "1px", borderTopStyle: "solid", borderTopColor: "var(--separator-light)", paddingTop: "8px" }}>
               {renderStatusBadge()}
               {data.liveStepRun?.attempt_count && data.liveStepRun.attempt_count > 1 && (
-                <span className="text-[10px] text-zinc-600 font-mono ml-auto shrink-0">
+                <span style={{ fontSize: "10px", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }} className="ml-auto shrink-0">
                   ×{data.liveStepRun.attempt_count}
                 </span>
               )}
@@ -229,8 +301,8 @@ export function WorkflowNode({
               type="source"
               id="true"
               position={Position.Right}
-              className="!h-2.5 !w-2.5 !border-2 !border-[#181818] !bg-emerald-500/80 transition-transform hover:scale-125"
-              style={{ top: "30%" }}
+              className="!h-2.5 !w-2.5 !border-2 transition-transform hover:scale-125"
+              style={{ borderColor: "var(--bg-secondary)", background: "var(--success)" }}
             />
           </div>
           <div className="absolute right-0 top-[70%] flex items-center translate-x-full pr-1">
@@ -238,8 +310,8 @@ export function WorkflowNode({
               type="source"
               id="false"
               position={Position.Right}
-              className="!h-2.5 !w-2.5 !border-2 !border-[#181818] !bg-rose-500/80 transition-transform hover:scale-125"
-              style={{ top: "70%" }}
+              className="!h-2.5 !w-2.5 !border-2 transition-transform hover:scale-125"
+              style={{ borderColor: "var(--bg-secondary)", background: "var(--destructive)" }}
             />
           </div>
         </>
@@ -248,7 +320,8 @@ export function WorkflowNode({
           type="source"
           id="source"
           position={Position.Right}
-          className="!h-2.5 !w-2.5 !border-2 !border-[#181818] !bg-blue-500/80 transition-transform hover:scale-125"
+          className="!h-2.5 !w-2.5 !border-2 !bg-[var(--accent)] transition-transform hover:scale-125"
+          style={{ borderColor: "var(--bg-secondary)" }}
         />
       )}
     </>

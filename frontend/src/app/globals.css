@@ -1,19 +1,80 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* ─── Design System Tokens ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — Apple Human Interface Guidelines (Dark Mode)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --surface-0:  #090909;
-  --surface-1:  #111111;
-  --surface-2:  #181818;
-  --surface-3:  #202020;
-  --border:     rgba(255,255,255,0.08);
-  --border-hover: rgba(255,255,255,0.18);
-  --text-primary:   #f0f0f0;
-  --text-secondary: #a1a1aa;
-  --text-muted:     #52525b;
-  --accent:     #3b82f6;
-  --accent-dim: rgba(59,130,246,0.15);
+  /* ── Backgrounds ───────────────────────────────────────────────────────── */
+  --bg-primary:    #000000;
+  --bg-secondary:  #1C1C1E;
+  --bg-tertiary:   #2C2C2E;
+  --bg-elevated:   #1C1C1E;
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --text-primary:   #FFFFFF;
+  --text-secondary: rgba(235, 235, 245, 0.60);
+  --text-tertiary:  rgba(235, 235, 245, 0.30);
+
+  /* ── Accent & Semantics ────────────────────────────────────────────────── */
+  --accent:       #0A84FF;
+  --accent-dim:   rgba(10, 132, 255, 0.12);
+  --success:      #30D158;
+  --success-dim:  rgba(48, 209, 88, 0.12);
+  --warning:      #FF9F0A;
+  --warning-dim:  rgba(255, 159, 10, 0.12);
+  --destructive:  #FF453A;
+  --destructive-dim: rgba(255, 69, 58, 0.12);
+
+  /* ── Separators & Borders ──────────────────────────────────────────────── */
+  --separator:       rgba(84, 84, 88, 0.60);
+  --separator-light: rgba(84, 84, 88, 0.36);
+
+  /* ── Typography Scale (Apple SF) ───────────────────────────────────────── */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono:   ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --text-large-title: 34px;
+  --text-title-1: 28px;
+  --text-title-2: 22px;
+  --text-title-3: 20px;
+  --text-headline: 17px;
+  --text-body:     17px;
+  --text-callout:  16px;
+  --text-subhead:  15px;
+  --text-footnote: 13px;
+  --text-caption:  12px;
+  --text-caption-2: 11px;
+
+  /* ── Spacing (8px base) ────────────────────────────────────────────────── */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+
+  /* ── Corner Radius ─────────────────────────────────────────────────────── */
+  --radius-sm:     6px;
+  --radius-button: 10px;
+  --radius-input:  10px;
+  --radius-card:   12px;
+  --radius-panel:  14px;
+  --radius-sheet:  22px;
+
+  /* ── Shadows ───────────────────────────────────────────────────────────── */
+  --shadow-subtle:   0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.16);
+  --shadow-sheet:    0 8px 32px rgba(0, 0, 0, 0.32);
+
+  /* ── Transitions ───────────────────────────────────────────────────────── */
+  --transition-fast:   150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow:   350ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────── */
@@ -21,22 +82,35 @@
 
 html, body {
   height: 100%;
-  background: var(--surface-0);
+  background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-system);
+  font-size: var(--text-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
 
-/* ─── React Flow Global Overrides ────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   REACT FLOW OVERRIDES
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Strip default white panel background from Controls */
+/* Hide React Flow attribution */
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* Controls panel */
 .react-flow__controls {
   background: transparent !important;
   border: none !important;
@@ -47,33 +121,35 @@ html, body {
 }
 
 .react-flow__controls-button {
-  background: rgba(24,24,24,0.95) !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 8px !important;
-  color: #a1a1aa !important;
-  fill: #a1a1aa !important;
-  width: 28px !important;
-  height: 28px !important;
+  background: rgba(28, 28, 30, 0.92) !important;
+  border: 1px solid var(--separator-light) !important;
+  border-radius: var(--radius-button) !important;
+  color: var(--text-secondary) !important;
+  fill: var(--text-secondary) !important;
+  width: 32px !important;
+  height: 32px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  transition: background 150ms, border-color 150ms, color 150ms !important;
+  backdrop-filter: blur(12px) !important;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast) !important;
 }
 
 .react-flow__controls-button:hover {
-  background: rgba(255,255,255,0.08) !important;
-  border-color: rgba(255,255,255,0.18) !important;
-  color: #f0f0f0 !important;
-  fill: #f0f0f0 !important;
+  background: rgba(44, 44, 46, 0.95) !important;
+  border-color: var(--separator) !important;
+  color: var(--text-primary) !important;
+  fill: var(--text-primary) !important;
 }
 
 /* MiniMap */
 .react-flow__minimap {
-  background: rgba(14,14,14,0.85) !important;
-  border: 1px solid rgba(255,255,255,0.06) !important;
-  border-radius: 12px !important;
+  background: rgba(28, 28, 30, 0.85) !important;
+  border: 1px solid var(--separator-light) !important;
+  border-radius: var(--radius-card) !important;
   overflow: hidden !important;
   box-shadow: none !important;
+  backdrop-filter: blur(8px) !important;
 }
 
 /* Edge paths */
@@ -81,27 +157,30 @@ html, body {
   stroke-width: 1.5 !important;
 }
 
-/* ─── Canvas background grid ─────────────────────────────────────────────── */
+/* Canvas background grid */
 .react-flow__background {
-  background-color: var(--surface-0) !important;
+  background-color: var(--bg-primary) !important;
 }
 
-/* ─── Selection box ──────────────────────────────────────────────────────── */
+/* Selection box */
 .react-flow__selection {
-  background: rgba(59,130,246,0.06) !important;
-  border: 1px solid rgba(59,130,246,0.4) !important;
-  border-radius: 6px !important;
+  background: rgba(10, 132, 255, 0.06) !important;
+  border: 1px solid rgba(10, 132, 255, 0.35) !important;
+  border-radius: var(--radius-sm) !important;
 }
 
-/* ─── Node Toolbar container ─────────────────────────────────────────────── */
+/* Node toolbar container */
 .react-flow__node-toolbar {
   filter: none !important;
 }
 
-/* ─── Keyframe animations ────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);   }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeIn {
@@ -111,92 +190,106 @@ html, body {
 
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.97); }
-  to   { opacity: 1; transform: scale(1);    }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%;   }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%;   }
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.7; }
 }
 
-@keyframes orb-float {
-  0%   { transform: translateY(0px) scale(1);    }
-  50%  { transform: translateY(-18px) scale(1.03); }
-  100% { transform: translateY(0px) scale(1);    }
+.animate-fade-in-up  { animation: fadeInUp 0.3s var(--transition-slow) both; }
+.animate-fade-in     { animation: fadeIn 0.25s ease both; }
+.animate-scale-in    { animation: scaleIn 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) both; }
+.animate-subtle-pulse { animation: subtlePulse 2s ease-in-out infinite; }
+
+/* ─── Reduced Motion ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-subtle-pulse {
+    animation: none !important;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   NODE SIDEBAR BUTTONS (Apple grouped-list style)
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.animate-fade-in-up  { animation: fadeInUp 0.35s ease both; }
-.animate-fade-in     { animation: fadeIn 0.3s ease both; }
-.animate-scale-in    { animation: scaleIn 0.25s ease both; }
-.animate-orb-float   { animation: orb-float 7s ease-in-out infinite; }
-.animate-spin-slow   { animation: spin-slow 25s linear infinite; }
-
-/* ─── Node button style (sidebar) ───────────────────────────────────────── */
 .node-button {
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.025);
+  padding: 10px 12px;
+  border-radius: var(--radius-button);
+  border: 1px solid transparent;
+  background: transparent;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--text-footnote);
   font-weight: 500;
   font-family: inherit;
-  transition: background 150ms ease, border-color 150ms ease, transform 100ms ease;
-  color: #d4d4d8;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   cursor: grab;
   user-select: none;
 }
 
 .node-button:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  background: rgba(59, 130, 246, 0.07);
-  color: #f0f0f0;
-  transform: translateX(2px);
+  background: var(--accent-dim);
+  border-color: rgba(10, 132, 255, 0.18);
+  color: var(--text-primary);
 }
 
 .node-button:active {
   transform: scale(0.98);
   cursor: grabbing;
+  background: rgba(10, 132, 255, 0.18);
 }
 
-/* ─── Canvas Lock Button ─────────────────────────────────────────────────── */
+.node-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CANVAS LOCK BUTTON
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 .canvas-lock-btn {
-  background: rgba(24,24,24,0.9);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  color: #a1a1aa;
-  width: 28px;
-  height: 28px;
+  background: rgba(28, 28, 30, 0.92);
+  border: 1px solid var(--separator-light);
+  border-radius: var(--radius-button);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 150ms, border-color 150ms, color 150ms;
-  font-size: 12px;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+  font-size: var(--text-caption);
+  backdrop-filter: blur(12px);
 }
 
 .canvas-lock-btn:hover {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.2);
-  color: #f0f0f0;
+  background: rgba(44, 44, 46, 0.95);
+  border-color: var(--separator);
+  color: var(--text-primary);
 }
 
 .canvas-lock-btn.locked {
-  background: rgba(245,158,11,0.15);
-  border-color: rgba(245,158,11,0.35);
-  color: #fbbf24;
+  background: var(--warning-dim);
+  border-color: rgba(255, 159, 10, 0.35);
+  color: var(--warning);
 }
 
 .canvas-lock-btn.locked:hover {
-  background: rgba(245,158,11,0.22);
+  background: rgba(255, 159, 10, 0.20);
 }

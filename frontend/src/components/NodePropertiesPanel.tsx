@@ -24,6 +24,50 @@ interface NodePropertiesPanelProps {
   isSavingDisabled?: boolean;
 }
 
+/* ── Shared style helpers ─────────────────────────────────────────────── */
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "var(--text-caption)",
+  fontWeight: 500,
+  color: "var(--text-secondary)",
+  marginBottom: "6px",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: "var(--radius-input)",
+  border: "1px solid var(--separator-light)",
+  background: "var(--bg-tertiary)",
+  padding: "8px 12px",
+  fontSize: "var(--text-footnote)",
+  color: "var(--text-primary)",
+  outline: "none",
+  fontFamily: "inherit",
+  transition: "border-color var(--transition-fast)",
+};
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: "pointer",
+};
+
+const textareaStyle: React.CSSProperties = {
+  ...inputStyle,
+  resize: "vertical" as const,
+  fontFamily: "var(--font-mono)",
+  fontSize: "var(--text-caption)",
+  lineHeight: 1.5,
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontSize: "var(--text-caption-2)",
+  fontWeight: 600,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.06em",
+  color: "var(--text-tertiary)",
+};
+
 export function NodePropertiesPanel({
   selectedNode,
   onUpdateNodeName,
@@ -56,13 +100,24 @@ export function NodePropertiesPanel({
         type="button"
         onClick={onSave}
         disabled={saveStatus === "saving" || isSavingDisabled}
-        className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer ${
-          saveStatus === "saved"
-            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-            : saveStatus === "error"
-            ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
-            : "border-white/15 bg-white/5 text-zinc-300 hover:border-white/30 hover:text-white"
-        }`}
+        className="flex items-center gap-1.5 disabled:opacity-40 transition-all cursor-pointer"
+        style={{
+          borderRadius: "var(--radius-sm)",
+          border: `1px solid ${
+            saveStatus === "saved" ? "rgba(48,209,88,0.30)"
+            : saveStatus === "error" ? "rgba(255,69,58,0.30)"
+            : "var(--separator-light)"
+          }`,
+          background: saveStatus === "saved" ? "var(--success-dim)"
+            : saveStatus === "error" ? "var(--destructive-dim)"
+            : "transparent",
+          padding: "3px 10px",
+          fontSize: "var(--text-caption-2)",
+          fontWeight: 500,
+          color: saveStatus === "saved" ? "var(--success)"
+            : saveStatus === "error" ? "var(--destructive)"
+            : "var(--text-secondary)",
+        }}
       >
         {saveStatus === "saving" ? (
           <>
@@ -83,22 +138,35 @@ export function NodePropertiesPanel({
 
   if (!selectedNode) {
     return (
-      <aside className="w-80 shrink-0 border-l border-white/10 p-5 bg-[#0a0a0a] flex flex-col">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
-          <h2 className="text-sm font-semibold text-white">
+      <aside className="w-80 shrink-0 flex flex-col" style={{
+        borderLeft: "1px solid var(--separator-light)",
+        padding: "var(--space-5)",
+        background: "var(--bg-primary)",
+      }}>
+        <div className="flex items-center justify-between" style={{
+          borderBottom: "1px solid var(--separator-light)",
+          paddingBottom: "var(--space-4)",
+          marginBottom: "var(--space-5)",
+        }}>
+          <h2 style={{ fontSize: "var(--text-footnote)", fontWeight: 600, color: "var(--text-primary)" }}>
             Node Properties
           </h2>
           {renderSaveButton()}
         </div>
 
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-zinc-400">
-            ⚙️
+        <div className="flex flex-col items-center justify-center text-center" style={{
+          borderRadius: "var(--radius-card)",
+          border: "1px dashed var(--separator-light)",
+          background: "rgba(255,255,255,0.015)",
+          padding: "var(--space-8)",
+        }}>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full mb-3" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <span style={{ fontSize: "var(--text-callout)", color: "var(--text-tertiary)" }}>⚙️</span>
           </div>
-          <p className="text-sm font-medium text-zinc-300">
+          <p style={{ fontSize: "var(--text-footnote)", fontWeight: 500, color: "var(--text-secondary)" }}>
             No Node Selected
           </p>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p style={{ fontSize: "var(--text-caption)", color: "var(--text-tertiary)", marginTop: "var(--space-1)" }}>
             Click any node on the canvas to configure its settings.
           </p>
         </div>
@@ -112,40 +180,40 @@ export function NodePropertiesPanel({
 
   const getReadableType = (type: NodeType) => {
     switch (type) {
-      case "trigger":
-        return "Trigger";
-      case "ai_agent":
-        return "AI Agent";
-      case "http_request":
-        return "HTTP Request";
-      case "database":
-        return "Database";
-      case "condition":
-        return "Condition";
-      case "notify":
-        return "Notify";
-      case "approval_gate":
-        return "Approval Gate";
-      default:
-        return "Custom Node";
+      case "trigger":       return "Trigger";
+      case "ai_agent":      return "AI Agent";
+      case "http_request":  return "HTTP Request";
+      case "database":      return "Database";
+      case "condition":     return "Condition";
+      case "notify":        return "Notify";
+      case "approval_gate": return "Approval Gate";
+      default:              return "Custom Node";
     }
   };
 
   return (
-    <aside className="w-80 shrink-0 border-l border-white/10 p-5 bg-[#0a0a0a] overflow-y-auto max-h-[calc(100vh-4rem)] flex flex-col gap-6">
+    <aside className="w-80 shrink-0 overflow-y-auto flex flex-col gap-6" style={{
+      borderLeft: "1px solid var(--separator-light)",
+      padding: "var(--space-5)",
+      background: "var(--bg-primary)",
+      maxHeight: "calc(100vh - 3rem)",
+    }}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+      <div className="flex items-center justify-between" style={{
+        borderBottom: "1px solid var(--separator-light)",
+        paddingBottom: "var(--space-4)",
+      }}>
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-base">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center text-base" style={{
+            borderRadius: "var(--radius-button)",
+            background: "rgba(255,255,255,0.04)",
+          }}>
             {data.icon}
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-white truncate">
+            <h2 className="truncate" style={{ fontSize: "var(--text-footnote)", fontWeight: 600, color: "var(--text-primary)" }}>
               {getReadableType(nodeType)}
             </h2>
-            <p className="text-[10px] font-mono text-zinc-500 truncate">
-              ID: {id}
-            </p>
           </div>
         </div>
 
@@ -155,7 +223,13 @@ export function NodePropertiesPanel({
           <button
             onClick={onDeselectNode}
             title="Deselect Node"
-            className="rounded p-1 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+            className="transition-colors cursor-pointer"
+            style={{
+              borderRadius: "var(--radius-sm)",
+              padding: "4px",
+              color: "var(--text-tertiary)",
+              background: "transparent",
+            }}
           >
             ✕
           </button>
@@ -164,53 +238,59 @@ export function NodePropertiesPanel({
 
       {/* Lock status callout */}
       {data.locked && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300 flex items-center gap-2">
+        <div className="flex items-center gap-2" style={{
+          borderRadius: "var(--radius-button)",
+          border: "1px solid rgba(255,159,10,0.25)",
+          background: "var(--warning-dim)",
+          padding: "8px 12px",
+          fontSize: "var(--text-caption)",
+          color: "var(--warning)",
+        }}>
           🔒 <span>Node is <strong>locked</strong>. Unlock via the canvas toolbar to delete or drag.</span>
         </div>
       )}
 
       {/* General Settings */}
       <div className="space-y-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          General
-        </h3>
+        <h3 style={sectionHeaderStyle}>General</h3>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-            Node Name
-          </label>
+          <label style={labelStyle}>Node Name</label>
           <input
             type="text"
             value={data.label}
             onChange={(e) => onUpdateNodeName(id, e.target.value)}
             placeholder="Enter node name"
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+            style={inputStyle}
+            className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-            Node Type
-          </label>
-          <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-xs font-medium text-zinc-400">
+          <label style={labelStyle}>Node Type</label>
+          <div style={{
+            borderRadius: "var(--radius-input)",
+            border: "1px solid var(--separator-light)",
+            background: "rgba(255,255,255,0.02)",
+            padding: "8px 12px",
+            fontSize: "var(--text-caption)",
+            fontWeight: 500,
+            color: "var(--text-tertiary)",
+          }}>
             {getReadableType(nodeType)}
           </div>
         </div>
       </div>
 
       {/* Type-Specific Configuration */}
-      <div className="space-y-4 border-t border-white/10 pt-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-          Configuration
-        </h3>
+      <div className="space-y-4" style={{ borderTop: "1px solid var(--separator-light)", paddingTop: "var(--space-4)" }}>
+        <h3 style={sectionHeaderStyle}>Configuration</h3>
 
         {/* 1. TRIGGER NODE */}
         {nodeType === "trigger" && (
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Trigger Type
-              </label>
+              <label style={labelStyle}>Trigger Type</label>
               <select
                 value={config.trigger?.triggerType ?? "Manual"}
                 disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
@@ -227,7 +307,8 @@ export function NodePropertiesPanel({
                     webhookSecret: autoSecret,
                   });
                 }}
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={selectStyle}
+                className="disabled:opacity-50 focus:border-[var(--accent)]"
               >
                 <option value="Manual">Manual</option>
                 <option value="Webhook">Webhook</option>
@@ -236,24 +317,42 @@ export function NodePropertiesPanel({
             </div>
 
             {data.userRole && data.userRole.toLowerCase() !== "owner" && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+              <div style={{
+                borderRadius: "var(--radius-button)",
+                border: "1px solid rgba(255,159,10,0.20)",
+                background: "var(--warning-dim)",
+                padding: "8px 12px",
+                fontSize: "var(--text-caption)",
+                color: "var(--warning)",
+              }}>
                 🛡️ Webhook configuration is restricted to organization Owners.
               </div>
             )}
 
             {config.trigger?.triggerType === "Webhook" && (
-              <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="space-y-3" style={{
+                borderRadius: "var(--radius-card)",
+                border: "1px solid var(--separator-light)",
+                background: "rgba(255,255,255,0.02)",
+                padding: "12px",
+              }}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-200">Webhook Settings</span>
-                  <span className="rounded bg-blue-500/20 px-1.5 py-0.5 text-[10px] font-mono text-blue-300">
+                  <span style={{ fontSize: "var(--text-caption)", fontWeight: 600, color: "var(--text-primary)" }}>Webhook Settings</span>
+                  <span style={{
+                    borderRadius: "var(--radius-sm)",
+                    background: "var(--accent-dim)",
+                    padding: "2px 6px",
+                    fontSize: "10px",
+                    fontFamily: "var(--font-mono)",
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                  }}>
                     Active
                   </span>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-zinc-400">
-                    Webhook Secret Token
-                  </label>
+                  <label style={{ ...labelStyle, fontSize: "var(--text-caption-2)" }}>Webhook Secret Token</label>
                   <div className="flex gap-1.5">
                     <input
                       type="password"
@@ -266,7 +365,8 @@ export function NodePropertiesPanel({
                         })
                       }
                       placeholder="whsec_..."
-                      className="w-full rounded-lg border border-white/10 bg-[#141414] px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-blue-500 placeholder:text-zinc-600 disabled:opacity-50"
+                      style={{ ...inputStyle, fontFamily: "var(--font-mono)", fontSize: "var(--text-caption)" }}
+                      className="placeholder:text-[rgba(235,235,245,0.20)] disabled:opacity-50 focus:border-[var(--accent)]"
                     />
                     {(!data.userRole || data.userRole.toLowerCase() === "owner") && (
                       <button
@@ -279,24 +379,37 @@ export function NodePropertiesPanel({
                           });
                         }}
                         title="Regenerate Secret"
-                        className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
+                        className="shrink-0 transition-all cursor-pointer"
+                        style={{
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid var(--separator-light)",
+                          padding: "6px 8px",
+                          fontSize: "var(--text-caption)",
+                          color: "var(--text-secondary)",
+                          background: "transparent",
+                        }}
                       >
                         🔄
                       </button>
                     )}
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-500">
-                    Required in <code className="text-zinc-400">x-webhook-secret</code> or <code className="text-zinc-400">Bearer</code> header.
+                  <p style={{ marginTop: "4px", fontSize: "10px", color: "var(--text-tertiary)" }}>
+                    Required in <code style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>x-webhook-secret</code> or <code style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>Bearer</code> header.
                   </p>
                 </div>
 
-                <div className="rounded border border-white/5 bg-black/40 p-2 text-[11px] text-zinc-400">
-                  <div className="font-semibold text-zinc-300 mb-1">HTTP Inbound Request:</div>
-                  <div className="font-mono text-[10px] text-blue-300 break-all">
+                <div style={{
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--separator-light)",
+                  background: "rgba(0,0,0,0.3)",
+                  padding: "8px",
+                }}>
+                  <div style={{ fontSize: "var(--text-caption-2)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "4px" }}>HTTP Inbound Request:</div>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--accent)", wordBreak: "break-all" as const }}>
                     POST /api/triggers/webhook/[workflow-id]
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-500">
-                    Downstream steps can reference payload fields via <code className="text-zinc-300">{"{{ trigger.data.event }}"}</code> or <code className="text-zinc-300">{"{{ trigger.data.your_key }}"}</code>.
+                  <div style={{ marginTop: "4px", fontSize: "10px", color: "var(--text-tertiary)" }}>
+                    Downstream steps can reference payload fields via <code style={{ color: "var(--text-secondary)" }}>{"{{ trigger.data.event }}"}</code> or <code style={{ color: "var(--text-secondary)" }}>{"{{ trigger.data.your_key }}"}</code>.
                   </div>
                 </div>
               </div>
@@ -308,9 +421,7 @@ export function NodePropertiesPanel({
         {nodeType === "ai_agent" && (
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                AI Model
-              </label>
+              <label style={labelStyle}>AI Model</label>
               <select
                 value={config.aiAgent?.model ?? "Gemini"}
                 onChange={(e) =>
@@ -318,7 +429,8 @@ export function NodePropertiesPanel({
                     model: e.target.value as "Gemini" | "OpenAI" | "Claude",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={selectStyle}
+                className="focus:border-[var(--accent)]"
               >
                 <option value="Gemini">Gemini</option>
                 <option value="OpenAI">OpenAI</option>
@@ -327,9 +439,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                System Prompt
-              </label>
+              <label style={labelStyle}>System Prompt</label>
               <textarea
                 rows={3}
                 value={config.aiAgent?.systemPrompt ?? ""}
@@ -339,14 +449,13 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="You are an AI workflow assistant..."
-                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={{ ...textareaStyle, fontFamily: "inherit" }}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                User Prompt
-              </label>
+              <label style={labelStyle}>User Prompt</label>
               <textarea
                 rows={3}
                 value={config.aiAgent?.userPrompt ?? ""}
@@ -356,16 +465,15 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="Process the input data..."
-                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={{ ...textareaStyle, fontFamily: "inherit" }}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-300">
-                  Temperature
-                </label>
-                <span className="text-xs font-mono text-blue-400">
+              <div className="flex items-center justify-between" style={{ marginBottom: "6px" }}>
+                <label style={{ ...labelStyle, marginBottom: 0 }}>Temperature</label>
+                <span style={{ fontSize: "var(--text-caption)", fontFamily: "var(--font-mono)", color: "var(--accent)" }}>
                   {config.aiAgent?.temperature ?? 0.7}
                 </span>
               </div>
@@ -380,14 +488,13 @@ export function NodePropertiesPanel({
                     temperature: parseFloat(e.target.value),
                   })
                 }
-                className="w-full accent-blue-600 cursor-pointer"
+                className="w-full cursor-pointer"
+                style={{ accentColor: "var(--accent)" }}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Max Tokens
-              </label>
+              <label style={labelStyle}>Max Tokens</label>
               <input
                 type="number"
                 min="1"
@@ -399,7 +506,8 @@ export function NodePropertiesPanel({
                     maxTokens: parseInt(e.target.value, 10) || 0,
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={inputStyle}
+                className="focus:border-[var(--accent)]"
               />
             </div>
           </div>
@@ -409,21 +517,16 @@ export function NodePropertiesPanel({
         {nodeType === "http_request" && (
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                HTTP Method
-              </label>
+              <label style={labelStyle}>HTTP Method</label>
               <select
                 value={config.httpRequest?.method ?? "GET"}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "httpRequest", {
-                    method: e.target.value as
-                      | "GET"
-                      | "POST"
-                      | "PUT"
-                      | "DELETE",
+                    method: e.target.value as "GET" | "POST" | "PUT" | "DELETE",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={selectStyle}
+                className="focus:border-[var(--accent)]"
               >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
@@ -433,9 +536,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Request URL
-              </label>
+              <label style={labelStyle}>Request URL</label>
               <input
                 type="text"
                 value={config.httpRequest?.url ?? ""}
@@ -445,14 +546,13 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="https://api.example.com/v1/resource"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={inputStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Headers (JSON)
-              </label>
+              <label style={labelStyle}>Headers (JSON)</label>
               <textarea
                 rows={3}
                 value={config.httpRequest?.headers ?? ""}
@@ -461,15 +561,14 @@ export function NodePropertiesPanel({
                     headers: e.target.value,
                   })
                 }
-                placeholder='{\n  "Authorization": "Bearer ..."\n}'
-                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder={'{\n  "Authorization": "Bearer ..."\n}'}
+                style={textareaStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Request Body
-              </label>
+              <label style={labelStyle}>Request Body</label>
               <textarea
                 rows={3}
                 value={config.httpRequest?.body ?? ""}
@@ -478,8 +577,9 @@ export function NodePropertiesPanel({
                     body: e.target.value,
                   })
                 }
-                placeholder='{\n  "query": "..."\n}'
-                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                placeholder={'{\n  "query": "..."\n}'}
+                style={textareaStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
           </div>
@@ -489,28 +589,30 @@ export function NodePropertiesPanel({
         {nodeType === "database" && (
           <div className="space-y-4">
             {data.userRole && data.userRole.toLowerCase() !== "owner" && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+              <div style={{
+                borderRadius: "var(--radius-button)",
+                border: "1px solid rgba(255,159,10,0.20)",
+                background: "var(--warning-dim)",
+                padding: "8px 12px",
+                fontSize: "var(--text-caption)",
+                color: "var(--warning)",
+              }}>
                 🛡️ Database write configuration is restricted to organization Owners.
               </div>
             )}
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Operation
-              </label>
+              <label style={labelStyle}>Operation</label>
               <select
                 value={config.database?.operation ?? "INSERT"}
                 disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "database", {
-                    operation: e.target.value as
-                      | "SELECT"
-                      | "INSERT"
-                      | "UPDATE"
-                      | "DELETE",
+                    operation: e.target.value as "SELECT" | "INSERT" | "UPDATE" | "DELETE",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={selectStyle}
+                className="disabled:opacity-50 focus:border-[var(--accent)]"
               >
                 <option value="INSERT">INSERT</option>
                 <option value="UPDATE">UPDATE</option>
@@ -520,9 +622,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Table Name
-              </label>
+              <label style={labelStyle}>Table Name</label>
               <input
                 type="text"
                 value={config.database?.tableName ?? ""}
@@ -533,14 +633,13 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="e.g. audit_logs or records"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={inputStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] disabled:opacity-50 focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Query / SQL Expression
-              </label>
+              <label style={labelStyle}>Query / SQL Expression</label>
               <textarea
                 rows={4}
                 value={config.database?.query ?? ""}
@@ -551,10 +650,11 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="INSERT INTO audit_logs (event, user_id) VALUES ('{{trigger.data.action}}', '{{trigger.data.userId}}');"
-                className="w-full resize-y font-mono rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={textareaStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] disabled:opacity-50 focus:border-[var(--accent)]"
               />
-              <p className="mt-1 text-[10px] text-zinc-500">
-                Supports workflow variables like <code className="text-zinc-300">{"{{ trigger.data.field }}"}</code> or <code className="text-zinc-300">{"{{ steps.StepName.output }}"}</code>.
+              <p style={{ marginTop: "4px", fontSize: "10px", color: "var(--text-tertiary)" }}>
+                Supports workflow variables like <code style={{ color: "var(--text-secondary)" }}>{"{{ trigger.data.field }}"}</code> or <code style={{ color: "var(--text-secondary)" }}>{"{{ steps.StepName.output }}"}</code>.
               </p>
             </div>
           </div>
@@ -564,9 +664,7 @@ export function NodePropertiesPanel({
         {nodeType === "condition" && (
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Evaluation Target Field
-              </label>
+              <label style={labelStyle}>Target Field</label>
               <input
                 type="text"
                 value={config.condition?.field ?? "content"}
@@ -576,17 +674,16 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="e.g. content, status, or data.result"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={inputStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
-              <p className="mt-1 text-[11px] text-zinc-500">
+              <p style={{ marginTop: "4px", fontSize: "var(--text-caption-2)", color: "var(--text-tertiary)" }}>
                 Field from the previous step output to evaluate (e.g. &quot;content&quot;).
               </p>
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Comparison Operator
-              </label>
+              <label style={labelStyle}>Comparison Operator</label>
               <select
                 value={config.condition?.operator ?? "contains"}
                 onChange={(e) =>
@@ -604,7 +701,8 @@ export function NodePropertiesPanel({
                       | "is_not_empty",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={selectStyle}
+                className="focus:border-[var(--accent)]"
               >
                 <option value="contains">contains</option>
                 <option value="not_contains">does not contain</option>
@@ -620,9 +718,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Comparison Value
-              </label>
+              <label style={labelStyle}>Comparison Value</label>
               <input
                 type="text"
                 value={config.condition?.value ?? "APPROVE"}
@@ -632,22 +728,25 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="e.g. APPROVE"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={inputStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             {/* Advanced Options Disclosure */}
-            <div className="pt-2 border-t border-white/5">
+            <div style={{ paddingTop: "8px", borderTop: "1px solid var(--separator-light)" }}>
               <button
                 type="button"
                 onClick={() => setIsAdvancedConditionOpen((v) => !v)}
-                className="flex items-center justify-between w-full text-left py-1 text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer group"
+                className="flex items-center justify-between w-full text-left cursor-pointer group"
+                style={{ padding: "4px 0", fontSize: "var(--text-caption)", color: "var(--text-secondary)" }}
               >
-                <span className="flex items-center gap-1.5 font-medium">
+                <span className="flex items-center gap-1.5" style={{ fontWeight: 500 }}>
                   <svg
-                    className={`h-3 w-3 text-zinc-500 transition-transform duration-150 ${
-                      isAdvancedConditionOpen ? "rotate-90 text-blue-400" : ""
+                    className={`h-3 w-3 transition-transform duration-150 ${
+                      isAdvancedConditionOpen ? "rotate-90" : ""
                     }`}
+                    style={{ color: isAdvancedConditionOpen ? "var(--accent)" : "var(--text-tertiary)" }}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -657,7 +756,7 @@ export function NodePropertiesPanel({
                   </svg>
                   <span>Advanced Expression</span>
                 </span>
-                <span className="text-[10px] text-zinc-500 group-hover:text-zinc-400 font-mono">
+                <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>
                   {config.condition?.expression ? "Configured" : "Optional"}
                 </span>
               </button>
@@ -665,12 +764,15 @@ export function NodePropertiesPanel({
               {isAdvancedConditionOpen && (
                 <div className="mt-2.5 space-y-2 animate-fade-in">
                   <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-medium text-zinc-300">
-                      JavaScript Expression
-                    </label>
-                    <span className="text-[10px] text-zinc-500 font-mono">returns boolean</span>
+                    <label style={{ ...labelStyle, marginBottom: 0 }}>JavaScript Expression</label>
+                    <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>returns boolean</span>
                   </div>
-                  <div className="relative rounded-lg border border-white/10 bg-[#0d0d0d] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                  <div style={{
+                    borderRadius: "var(--radius-input)",
+                    border: "1px solid var(--separator-light)",
+                    background: "rgba(0,0,0,0.3)",
+                    transition: "border-color var(--transition-fast)",
+                  }} className="focus-within:border-[var(--accent)]">
                     <textarea
                       rows={3}
                       spellCheck={false}
@@ -683,11 +785,23 @@ export function NodePropertiesPanel({
                         })
                       }
                       placeholder='lastOutput?.content?.includes("APPROVE")'
-                      className="w-full resize-y font-mono bg-transparent p-2.5 text-xs text-blue-300 outline-none placeholder:text-zinc-600 leading-relaxed"
+                      style={{
+                        width: "100%",
+                        resize: "vertical" as const,
+                        fontFamily: "var(--font-mono)",
+                        background: "transparent",
+                        padding: "10px 12px",
+                        fontSize: "var(--text-caption)",
+                        color: "var(--accent)",
+                        outline: "none",
+                        lineHeight: 1.6,
+                        border: "none",
+                      }}
+                      className="placeholder:text-[rgba(235,235,245,0.20)]"
                     />
                   </div>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">
-                    Evaluated when standard operator is insufficient. Available scope: <code className="text-zinc-400 font-mono">lastOutput</code>, <code className="text-zinc-400 font-mono">steps</code>, <code className="text-zinc-400 font-mono">input</code>.
+                  <p style={{ fontSize: "10px", color: "var(--text-tertiary)", lineHeight: 1.5 }}>
+                    Evaluated when standard operator is insufficient. Available scope: <code style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>lastOutput</code>, <code style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>steps</code>, <code style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>input</code>.
                   </p>
                 </div>
               )}
@@ -699,15 +813,20 @@ export function NodePropertiesPanel({
         {nodeType === "notify" && (
           <div className="space-y-4">
             {data.userRole && data.userRole.toLowerCase() !== "owner" && (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs text-amber-300">
+              <div style={{
+                borderRadius: "var(--radius-button)",
+                border: "1px solid rgba(255,159,10,0.20)",
+                background: "var(--warning-dim)",
+                padding: "8px 12px",
+                fontSize: "var(--text-caption)",
+                color: "var(--warning)",
+              }}>
                 🛡️ Notification configuration is restricted to organization Owners.
               </div>
             )}
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Channel / Provider
-              </label>
+              <label style={labelStyle}>Channel / Provider</label>
               <select
                 value={config.notify?.channel ?? "Email"}
                 disabled={data.userRole ? data.userRole.toLowerCase() !== "owner" : false}
@@ -716,7 +835,8 @@ export function NodePropertiesPanel({
                     channel: e.target.value as "Email" | "Slack" | "Webhook",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={selectStyle}
+                className="disabled:opacity-50 focus:border-[var(--accent)]"
               >
                 <option value="Email">Email</option>
                 <option value="Slack">Slack</option>
@@ -725,9 +845,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Recipient / Target
-              </label>
+              <label style={labelStyle}>Recipient / Target</label>
               <input
                 type="text"
                 value={config.notify?.recipient ?? ""}
@@ -738,14 +856,13 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="user@example.com or #channel or URL"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={inputStyle}
+                className="placeholder:text-[rgba(235,235,245,0.20)] disabled:opacity-50 focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Message Template
-              </label>
+              <label style={labelStyle}>Message Template</label>
               <textarea
                 rows={4}
                 value={config.notify?.message ?? ""}
@@ -756,10 +873,11 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="Workflow execution finished: {{steps.ai_agent.response}}"
-                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                style={{ ...textareaStyle, fontFamily: "inherit" }}
+                className="placeholder:text-[rgba(235,235,245,0.20)] disabled:opacity-50 focus:border-[var(--accent)]"
               />
-              <p className="mt-1 text-[10px] text-zinc-500">
-                Supports workflow variables like <code className="text-zinc-300">{"{{ trigger.data.email }}"}</code> or <code className="text-zinc-300">{"{{ steps.AI Agent.output }}"}</code>.
+              <p style={{ marginTop: "4px", fontSize: "10px", color: "var(--text-tertiary)" }}>
+                Supports workflow variables like <code style={{ color: "var(--text-secondary)" }}>{"{{ trigger.data.email }}"}</code> or <code style={{ color: "var(--text-secondary)" }}>{"{{ steps.AI Agent.output }}"}</code>.
               </p>
             </div>
           </div>
@@ -769,9 +887,7 @@ export function NodePropertiesPanel({
         {nodeType === "approval_gate" && (
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Approval Message
-              </label>
+              <label style={labelStyle}>Approval Message</label>
               <textarea
                 rows={3}
                 value={config.approvalGate?.message ?? ""}
@@ -781,25 +897,22 @@ export function NodePropertiesPanel({
                   })
                 }
                 placeholder="Please review and approve this workflow step..."
-                className="w-full resize-y rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={{ ...textareaStyle, fontFamily: "inherit" }}
+                className="placeholder:text-[rgba(235,235,245,0.20)] focus:border-[var(--accent)]"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Required Role
-              </label>
+              <label style={labelStyle}>Required Role</label>
               <select
                 value={config.approvalGate?.requiredRole ?? "Owner"}
                 onChange={(e) =>
                   onUpdateNodeConfig(id, "approvalGate", {
-                    requiredRole: e.target.value as
-                      | "Owner"
-                      | "Editor"
-                      | "Viewer",
+                    requiredRole: e.target.value as "Owner" | "Editor" | "Viewer",
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-[#141414] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={selectStyle}
+                className="focus:border-[var(--accent)]"
               >
                 <option value="Owner">Owner</option>
                 <option value="Editor">Editor</option>
@@ -808,9 +921,7 @@ export function NodePropertiesPanel({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-300">
-                Timeout (Hours)
-              </label>
+              <label style={labelStyle}>Timeout (Hours)</label>
               <input
                 type="number"
                 min="1"
@@ -821,7 +932,8 @@ export function NodePropertiesPanel({
                     timeoutHours: parseInt(e.target.value, 10) || 1,
                   })
                 }
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                style={inputStyle}
+                className="focus:border-[var(--accent)]"
               />
             </div>
           </div>
@@ -830,28 +942,26 @@ export function NodePropertiesPanel({
 
       {/* Live Step Execution & Observability Section */}
       {(data.executionStatus || data.liveStepRun) && (
-        <div className="space-y-3.5 border-t border-white/10 pt-4">
+        <div className="space-y-3.5" style={{ borderTop: "1px solid var(--separator-light)", paddingTop: "var(--space-4)" }}>
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Execution Output
-            </h3>
+            <h3 style={sectionHeaderStyle}>Execution Output</h3>
             {data.executionStatus === "completed" && (
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 border border-emerald-500/30">
+              <span style={{ borderRadius: "var(--radius-sm)", background: "var(--success-dim)", border: "1px solid rgba(48,209,88,0.30)", padding: "2px 8px", fontSize: "10px", fontWeight: 600, color: "var(--success)" }}>
                 ✓ Completed
               </span>
             )}
             {data.executionStatus === "running" && (
-              <span className="rounded bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400 border border-blue-500/30 animate-pulse">
+              <span className="animate-subtle-pulse" style={{ borderRadius: "var(--radius-sm)", background: "var(--accent-dim)", border: "1px solid rgba(10,132,255,0.30)", padding: "2px 8px", fontSize: "10px", fontWeight: 600, color: "var(--accent)" }}>
                 ▶ Running...
               </span>
             )}
             {data.executionStatus === "paused" && (
-              <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/30 animate-pulse">
+              <span className="animate-subtle-pulse" style={{ borderRadius: "var(--radius-sm)", background: "var(--warning-dim)", border: "1px solid rgba(255,159,10,0.30)", padding: "2px 8px", fontSize: "10px", fontWeight: 600, color: "var(--warning)" }}>
                 ⏸ Awaiting Approval
               </span>
             )}
             {data.executionStatus === "failed" && (
-              <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-400 border border-rose-500/30">
+              <span style={{ borderRadius: "var(--radius-sm)", background: "var(--destructive-dim)", border: "1px solid rgba(255,69,58,0.30)", padding: "2px 8px", fontSize: "10px", fontWeight: 600, color: "var(--destructive)" }}>
                 ✕ Failed
               </span>
             )}
@@ -862,14 +972,20 @@ export function NodePropertiesPanel({
             <>
               {/* Completed / Active Output State */}
               {Boolean(data.liveStepRun?.output || data.liveStepRun?.status === "completed" || data.executionStatus === "completed") && (
-                <div className="rounded-xl border border-blue-500/30 bg-gradient-to-b from-blue-950/20 to-black/50 p-3.5 text-xs space-y-3 shadow-lg">
+                <div className="text-xs space-y-3" style={{
+                  borderRadius: "var(--radius-card)",
+                  border: "1px solid rgba(10,132,255,0.25)",
+                  background: "rgba(10,132,255,0.04)",
+                  padding: "14px",
+                  boxShadow: "var(--shadow-subtle)",
+                }}>
                   {/* Metadata Header */}
-                  <div className="grid grid-cols-2 gap-2 pb-2.5 border-b border-white/10 text-[11px]">
+                  <div className="grid grid-cols-2 gap-2 text-[11px]" style={{ paddingBottom: "10px", borderBottom: "1px solid var(--separator-light)" }}>
                     <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                      <span style={{ display: "block", fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--text-tertiary)" }}>
                         Model
                       </span>
-                      <span className="font-mono text-zinc-100 font-medium truncate block">
+                      <span className="block truncate" style={{ fontFamily: "var(--font-mono)", fontWeight: 500, color: "var(--text-primary)" }}>
                         {String(
                           (data.liveStepRun?.output as Record<string, unknown> | undefined)?.model ||
                             config.aiAgent?.model ||
@@ -878,11 +994,11 @@ export function NodePropertiesPanel({
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                      <span style={{ display: "block", fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--text-tertiary)" }}>
                         Status
                       </span>
-                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      <span className="inline-flex items-center gap-1" style={{ fontWeight: 600, color: "var(--success)" }}>
+                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--success)" }} />
                         Completed
                       </span>
                     </div>
@@ -913,10 +1029,10 @@ export function NodePropertiesPanel({
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1.5">
-                              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-200">
+                              <label style={{ fontSize: "var(--text-caption-2)", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--text-secondary)" }}>
                                 Response
                               </label>
-                              <span className="text-[10px] font-mono text-zinc-500">
+                              <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>
                                 ({responseText.length} chars)
                               </span>
                             </div>
@@ -926,7 +1042,16 @@ export function NodePropertiesPanel({
                                 type="button"
                                 onClick={() => setIsAiOutputExpanded(!isAiOutputExpanded)}
                                 title={isAiOutputExpanded ? "Collapse View" : "Expand View"}
-                                className="rounded bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer flex items-center gap-1 border border-white/10"
+                                className="flex items-center gap-1 transition-all cursor-pointer"
+                                style={{
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--separator-light)",
+                                  background: "transparent",
+                                  padding: "2px 8px",
+                                  fontSize: "10px",
+                                  fontWeight: 500,
+                                  color: "var(--text-secondary)",
+                                }}
                               >
                                 {isAiOutputExpanded ? "⤡ Collapse" : "⤢ Expand"}
                               </button>
@@ -934,23 +1059,37 @@ export function NodePropertiesPanel({
                               <button
                                 type="button"
                                 onClick={() => handleCopy(responseText)}
-                                className={`rounded px-2.5 py-0.5 text-[10px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                                  copied
-                                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
-                                }`}
+                                className="flex items-center gap-1 transition-all cursor-pointer text-white"
+                                style={{
+                                  borderRadius: "var(--radius-sm)",
+                                  padding: "2px 10px",
+                                  fontSize: "10px",
+                                  fontWeight: 600,
+                                  background: copied ? "var(--success-dim)" : "var(--accent)",
+                                  color: copied ? "var(--success)" : "#fff",
+                                  border: copied ? "1px solid rgba(48,209,88,0.35)" : "none",
+                                }}
                               >
-                                {copied ? "✓ Copied" : "📋 Copy Response"}
+                                {copied ? "✓ Copied" : "📋 Copy"}
                               </button>
                             </div>
                           </div>
 
                           <div
-                            className={`rounded-lg border border-white/10 bg-black/70 p-3 font-sans text-xs text-zinc-100 whitespace-pre-wrap break-words leading-relaxed select-text transition-all ${
+                            className={`select-text whitespace-pre-wrap break-words ${
                               isAiOutputExpanded
-                                ? "max-h-[500px] overflow-y-auto ring-1 ring-blue-500/30 shadow-inner"
+                                ? "max-h-[500px] overflow-y-auto"
                                 : "max-h-56 overflow-y-auto"
                             }`}
+                            style={{
+                              borderRadius: "var(--radius-input)",
+                              border: "1px solid var(--separator-light)",
+                              background: "rgba(0,0,0,0.5)",
+                              padding: "12px",
+                              fontSize: "var(--text-caption)",
+                              color: "var(--text-primary)",
+                              lineHeight: 1.6,
+                            }}
                           >
                             {responseText}
                           </div>
@@ -960,13 +1099,19 @@ export function NodePropertiesPanel({
                   </div>
 
                   {/* Token & Finish Reason Footer */}
-                  <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 border-t border-white/5">
+                  <div className="flex items-center justify-between" style={{
+                    fontSize: "10px",
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-tertiary)",
+                    paddingTop: "8px",
+                    borderTop: "1px solid var(--separator-light)",
+                  }}>
                     {Boolean(
                       (data.liveStepRun?.output as Record<string, unknown> | undefined)?.tokensUsed
                     ) ? (
                       <span>
                         Tokens:{" "}
-                        <span className="text-zinc-300">
+                        <span style={{ color: "var(--text-secondary)" }}>
                           {String(
                             ((data.liveStepRun?.output as Record<string, unknown>)
                               ?.tokensUsed as Record<string, number>)?.total ||
@@ -985,7 +1130,7 @@ export function NodePropertiesPanel({
                     ) && (
                       <span>
                         Finish:{" "}
-                        <span className="text-zinc-300">
+                        <span style={{ color: "var(--text-secondary)" }}>
                           {String(
                             (data.liveStepRun?.output as Record<string, unknown> | undefined)
                               ?.finishReason
@@ -999,30 +1144,45 @@ export function NodePropertiesPanel({
 
               {/* Failed AI Execution State */}
               {(data.executionStatus === "failed" || data.liveStepRun?.status === "failed") && (
-                <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3.5 text-xs space-y-2.5 shadow-lg">
-                  <div className="grid grid-cols-2 gap-2 pb-2 border-b border-rose-500/20 text-[11px]">
+                <div className="text-xs space-y-2.5" style={{
+                  borderRadius: "var(--radius-card)",
+                  border: "1px solid rgba(255,69,58,0.25)",
+                  background: "var(--destructive-dim)",
+                  padding: "14px",
+                  boxShadow: "var(--shadow-subtle)",
+                }}>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]" style={{ paddingBottom: "8px", borderBottom: "1px solid rgba(255,69,58,0.20)" }}>
                     <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                      <span style={{ display: "block", fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--text-tertiary)" }}>
                         Model
                       </span>
-                      <span className="font-mono text-zinc-200 font-medium">
+                      <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500, color: "var(--text-secondary)" }}>
                         {config.aiAgent?.model || "Gemini"}
                       </span>
                     </div>
                     <div>
-                      <span className="text-zinc-400 block text-[10px] uppercase font-semibold tracking-wider">
+                      <span style={{ display: "block", fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--text-tertiary)" }}>
                         Status
                       </span>
-                      <span className="inline-flex items-center gap-1 font-semibold text-rose-400">
+                      <span className="inline-flex items-center gap-1" style={{ fontWeight: 600, color: "var(--destructive)" }}>
                         ✕ Failed
                       </span>
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-rose-300 mb-1">
+                    <label style={{ display: "block", fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.04em", color: "var(--destructive)", marginBottom: "4px" }}>
                       Error
                     </label>
-                    <div className="rounded-lg border border-rose-500/30 bg-black/60 p-2.5 font-mono text-[11px] text-rose-200 whitespace-pre-wrap break-words leading-relaxed select-text max-h-48 overflow-y-auto">
+                    <div className="select-text whitespace-pre-wrap break-words max-h-48 overflow-y-auto" style={{
+                      borderRadius: "var(--radius-input)",
+                      border: "1px solid rgba(255,69,58,0.25)",
+                      background: "rgba(0,0,0,0.4)",
+                      padding: "10px",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "var(--text-caption-2)",
+                      color: "#FF6961",
+                      lineHeight: 1.5,
+                    }}>
                       {data.executionError || data.liveStepRun?.error || "AI Agent execution failed."}
                     </div>
                   </div>
@@ -1033,20 +1193,33 @@ export function NodePropertiesPanel({
 
           {/* HTTP Request Output */}
           {nodeType === "http_request" && data.liveStepRun?.output && (
-            <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+            <div className="space-y-2 text-xs" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid var(--separator-light)",
+              background: "rgba(255,255,255,0.02)",
+              padding: "12px",
+            }}>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-emerald-400">
+                <span style={{ fontWeight: 600, color: "var(--success)" }}>
                   HTTP {String(data.liveStepRun.output.status || 200)} {String(data.liveStepRun.output.statusText || "OK")}
                 </span>
                 {typeof data.liveStepRun.output.durationMs === "number" && (
-                  <span className="font-mono text-[10px] text-zinc-400">
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-tertiary)" }}>
                     {data.liveStepRun.output.durationMs}ms
                   </span>
                 )}
               </div>
               <div>
-                <label className="block text-[11px] font-medium text-zinc-400 mb-1">Response Data:</label>
-                <pre className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[10px] text-blue-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+                <label style={{ display: "block", fontSize: "var(--text-caption-2)", fontWeight: 500, color: "var(--text-tertiary)", marginBottom: "4px" }}>Response Data:</label>
+                <pre className="whitespace-pre-wrap max-h-40 overflow-y-auto" style={{
+                  borderRadius: "var(--radius-input)",
+                  border: "1px solid var(--separator-light)",
+                  background: "rgba(0,0,0,0.3)",
+                  padding: "10px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  color: "var(--accent)",
+                }}>
                   {JSON.stringify(data.liveStepRun.output.data || data.liveStepRun.output, null, 2)}
                 </pre>
               </div>
@@ -1055,19 +1228,32 @@ export function NodePropertiesPanel({
 
           {/* Database Output */}
           {nodeType === "database" && data.liveStepRun?.output && (
-            <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+            <div className="space-y-2 text-xs" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid var(--separator-light)",
+              background: "rgba(255,255,255,0.02)",
+              padding: "12px",
+            }}>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="font-mono text-zinc-300 font-medium">
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 500, color: "var(--text-secondary)" }}>
                   {String(data.liveStepRun.output.operation || "DB")} • {String(data.liveStepRun.output.table || config.database?.tableName || "table")}
                 </span>
-                <span className="text-[10px] text-emerald-400 font-mono">
+                <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--success)" }}>
                   {String(data.liveStepRun.output.rowCount ?? data.liveStepRun.output.affected_rows ?? 1)} row(s)
                 </span>
               </div>
               {Boolean(data.liveStepRun.output.rows) && (
                 <div>
-                  <label className="block text-[11px] font-medium text-zinc-400 mb-1">Result Rows:</label>
-                  <pre className="rounded-lg border border-white/5 bg-black/50 p-2.5 font-mono text-[10px] text-zinc-300 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                  <label style={{ display: "block", fontSize: "var(--text-caption-2)", fontWeight: 500, color: "var(--text-tertiary)", marginBottom: "4px" }}>Result Rows:</label>
+                  <pre className="whitespace-pre-wrap max-h-36 overflow-y-auto" style={{
+                    borderRadius: "var(--radius-input)",
+                    border: "1px solid var(--separator-light)",
+                    background: "rgba(0,0,0,0.3)",
+                    padding: "10px",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    color: "var(--text-secondary)",
+                  }}>
                     {JSON.stringify(data.liveStepRun.output.rows, null, 2)}
                   </pre>
                 </div>
@@ -1077,10 +1263,15 @@ export function NodePropertiesPanel({
 
           {/* Condition Output */}
           {nodeType === "condition" && data.liveStepRun?.output && (
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs space-y-1.5">
+            <div className="text-xs" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid var(--separator-light)",
+              background: "rgba(255,255,255,0.02)",
+              padding: "12px",
+            }}>
               <div className="flex items-center justify-between">
-                <span className="text-zinc-400">Evaluated Branch:</span>
-                <span className="font-semibold text-emerald-400">
+                <span style={{ color: "var(--text-tertiary)" }}>Evaluated Branch:</span>
+                <span style={{ fontWeight: 600, color: "var(--success)" }}>
                   {data.liveStepRun.output.evaluatedValue === true || data.liveStepRun.output.result === true || data.liveStepRun.output.selectedBranch === "true"
                     ? "✓ TRUE"
                     : "✕ FALSE"}
@@ -1091,48 +1282,73 @@ export function NodePropertiesPanel({
 
           {/* Notify Output */}
           {nodeType === "notify" && data.liveStepRun?.output && (
-            <div className="space-y-1.5 rounded-xl border border-white/10 bg-white/[0.02] p-3 text-xs">
+            <div className="space-y-1.5 text-xs" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid var(--separator-light)",
+              background: "rgba(255,255,255,0.02)",
+              padding: "12px",
+            }}>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-zinc-400">Channel:</span>
-                <span className="font-medium text-zinc-200">{String(data.liveStepRun.output.channel || config.notify?.channel || "Webhook")}</span>
+                <span style={{ color: "var(--text-tertiary)" }}>Channel:</span>
+                <span style={{ fontWeight: 500, color: "var(--text-secondary)" }}>{String(data.liveStepRun.output.channel || config.notify?.channel || "Webhook")}</span>
               </div>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-zinc-400">Delivery ID:</span>
-                <span className="font-mono text-[10px] text-zinc-400 truncate max-w-[140px]">{String(data.liveStepRun.output.messageId || "confirmed")}</span>
+                <span style={{ color: "var(--text-tertiary)" }}>Delivery ID:</span>
+                <span className="truncate max-w-[140px]" style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "var(--text-tertiary)" }}>{String(data.liveStepRun.output.messageId || "confirmed")}</span>
               </div>
             </div>
           )}
 
           {/* Approval Gate Output */}
           {nodeType === "approval_gate" && (
-            <div className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs">
+            <div className="space-y-3 text-xs" style={{
+              borderRadius: "var(--radius-card)",
+              border: "1px solid rgba(255,159,10,0.20)",
+              background: "rgba(255,159,10,0.04)",
+              padding: "12px",
+            }}>
               {data.executionStatus === "paused" ? (
                 <div className="space-y-2">
-                  <p className="text-amber-300 text-[11px] font-medium">
+                  <p style={{ fontSize: "var(--text-caption-2)", fontWeight: 500, color: "var(--warning)" }}>
                     ⏸ Workflow is paused at this step. Downstream steps have not executed.
                   </p>
                   {(data.userRole === "owner" || data.userRole === "editor") ? (
                     <button
                       type="button"
                       onClick={() => onApproveStep?.(data.stepId, data.liveStepRun?.id)}
-                      className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 py-2 text-xs font-semibold text-white transition-all shadow-md flex items-center justify-center gap-1.5"
+                      className="w-full flex items-center justify-center gap-1.5 text-white transition-all cursor-pointer"
+                      style={{
+                        borderRadius: "var(--radius-button)",
+                        background: "var(--success)",
+                        padding: "8px",
+                        fontSize: "var(--text-caption)",
+                        fontWeight: 700,
+                        boxShadow: "var(--shadow-subtle)",
+                      }}
                     >
                       Approve & Continue ✓
                     </button>
                   ) : (
-                    <div className="rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] text-amber-300">
+                    <div style={{
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid rgba(255,159,10,0.25)",
+                      background: "var(--warning-dim)",
+                      padding: "8px",
+                      fontSize: "10px",
+                      color: "var(--warning)",
+                    }}>
                       🛡️ Approval requires organization Owner or Editor privileges.
                     </div>
                   )}
                 </div>
               ) : data.liveStepRun?.approved_by ? (
                 <div className="space-y-1 text-[11px]">
-                  <div className="text-emerald-400 font-medium">✓ Step Approved</div>
-                  <div className="text-[10px] text-zinc-400 font-mono">
+                  <div style={{ fontWeight: 500, color: "var(--success)" }}>✓ Step Approved</div>
+                  <div style={{ fontSize: "10px", fontFamily: "var(--font-mono)", color: "var(--text-tertiary)" }}>
                     By: {data.liveStepRun.approved_by}
                   </div>
                   {data.liveStepRun.approved_at && (
-                    <div className="text-[10px] text-zinc-500">
+                    <div style={{ fontSize: "10px", color: "var(--text-tertiary)" }}>
                       At: {new Date(data.liveStepRun.approved_at).toLocaleTimeString()}
                     </div>
                   )}
@@ -1143,30 +1359,44 @@ export function NodePropertiesPanel({
 
           {/* Execution Error (if failed) */}
           {(data.executionError || (data.executionStatus === "failed" && data.liveStepRun?.error)) && (
-            <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs text-rose-300">
-              <span className="font-semibold block mb-0.5">Error:</span>
-              <span className="font-mono text-[11px] break-words">{data.executionError || data.liveStepRun?.error}</span>
+            <div style={{
+              borderRadius: "var(--radius-button)",
+              border: "1px solid rgba(255,69,58,0.25)",
+              background: "var(--destructive-dim)",
+              padding: "10px",
+              fontSize: "var(--text-caption)",
+              color: "var(--destructive)",
+            }}>
+              <span style={{ fontWeight: 600, display: "block", marginBottom: "2px" }}>Error:</span>
+              <span className="break-words" style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-caption-2)" }}>{data.executionError || data.liveStepRun?.error}</span>
             </div>
           )}
         </div>
       )}
 
       {/* Delete Node Action */}
-      <div className="border-t border-white/10 pt-4 mt-auto">
+      <div className="mt-auto" style={{ borderTop: "1px solid var(--separator-light)", paddingTop: "var(--space-4)" }}>
         <button
           onClick={() => { if (!data.locked) onDeleteNode(id); }}
           disabled={Boolean(data.locked)}
           title={data.locked ? "Unlock the node first to delete it" : "Delete this node"}
-          className={`w-full rounded-lg border px-4 py-2.5 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-            data.locked
-              ? "border-white/5 bg-white/[0.02] text-zinc-600 cursor-not-allowed"
-              : "border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:border-rose-500/50"
-          }`}
+          className="w-full flex items-center justify-center gap-2 transition-all"
+          style={{
+            borderRadius: "var(--radius-button)",
+            border: data.locked ? "1px solid var(--separator-light)" : "1px solid rgba(255,69,58,0.25)",
+            background: data.locked ? "transparent" : "var(--destructive-dim)",
+            padding: "10px 16px",
+            fontSize: "var(--text-footnote)",
+            fontWeight: 500,
+            color: data.locked ? "var(--text-tertiary)" : "var(--destructive)",
+            cursor: data.locked ? "not-allowed" : "pointer",
+            opacity: data.locked ? 0.5 : 1,
+          }}
         >
           {data.locked ? "🔒 Locked — Cannot Delete" : "🗑️ Delete Node"}
         </button>
         {!data.locked && (
-          <p className="mt-1.5 text-center text-[10px] text-zinc-500">
+          <p style={{ marginTop: "6px", textAlign: "center" as const, fontSize: "10px", color: "var(--text-tertiary)" }}>
             Or press Delete / Backspace key
           </p>
         )}

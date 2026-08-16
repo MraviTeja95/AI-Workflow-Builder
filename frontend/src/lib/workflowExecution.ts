@@ -1,4 +1,5 @@
 import { executeGraphQL } from "./hasura";
+import sgMail from "@sendgrid/mail";
 
 const sqlUrl = "https://zggynlwwpraxjmbawiym.hasura.ap-southeast-1.nhost.run/v2/query";
 
@@ -1113,73 +1114,48 @@ export async function executeNotify(
     throw lastError || new Error(`Notification delivery failed after ${maxAttempts} attempts.`);
   }
 
-  // Channel 2: Email (Resend Integration)
+  // Channel 2: Email (SendGrid Integration)
   if (channel.toLowerCase() === "email") {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resolvedRecipient)) {
       throw new Error(`Invalid email address format: '${resolvedRecipient}'.`);
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY?.trim();
-    if (!resendApiKey) {
-      throw new Error("Email notification is not configured: RESEND_API_KEY is missing on server.");
+    const sendgridApiKey = process.env.SENDGRID_API_KEY?.trim();
+    if (!sendgridApiKey) {
+      throw new Error("SendGrid API key is not configured.");
     }
 
-    const emailFrom = process.env.EMAIL_FROM?.trim();
-    if (!emailFrom) {
-      throw new Error("Email notification is not configured: EMAIL_FROM is missing on server.");
-    }
+    const sendgridFromEmail = process.env.SENDGRID_FROM_EMAIL?.trim() || "mraviteja876@gmail.com";
+    const sendgridFromName = process.env.SENDGRID_FROM_NAME?.trim() || "AI WORK FLOW BUILDER";
+
+    sgMail.setApiKey(sendgridApiKey);
 
     const maxAttempts = 3;
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        console.log(`[workflow] stage=notify provider=resend attempt=${attempt} recipient="${resolvedRecipient}"`);
+        console.log(`[workflow] stage=notify provider=sendgrid attempt=${attempt} recipient="${resolvedRecipient}"`);
 
-        const resendRes = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json",
+        const msg = {
+          to: resolvedRecipient,
+          from: {
+            email: sendgridFromEmail,
+            name: sendgridFromName,
           },
-          body: JSON.stringify({
-            from: emailFrom,
-            to: [resolvedRecipient],
-            subject: "AI Workflow Builder Notification",
-            text: resolvedMessage,
-          }),
-          signal: AbortSignal.timeout(10000),
-        });
+          subject: "AI Workflow Builder Notification",
+          text: resolvedMessage,
+          html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 16px; color: #111;">${resolvedMessage.replace(/\n/g, "<br/>")}</div>`,
+        };
 
-        if (!resendRes.ok) {
-          let errorDetail = "";
-          try {
-            const errJson = (await resendRes.json()) as { message?: string; error?: string; name?: string };
-            errorDetail = errJson.message || errJson.error || JSON.stringify(errJson);
-          } catch {
-            errorDetail = await resendRes.text().catch(() => "");
-          }
+        const [sendgridRes] = await sgMail.send(msg);
 
-          console.warn(`[workflow] provider=resend attempt=${attempt} status=${resendRes.status} error="${errorDetail.slice(0, 120)}"`);
+        const providerMessageId =
+          (sendgridRes.headers && (sendgridRes.headers["x-message-id"] as string)) ||
+          messageId;
 
-          // 4xx errors from provider are permanent -> fail fast without blind retries
-          if (resendRes.status >= 400 && resendRes.status < 500) {
-            throw new Error(`Email delivery rejected by Resend (${resendRes.status}): ${errorDetail.slice(0, 200)}`);
-          }
-
-          // 5xx server errors -> retry with exponential backoff
-          if (resendRes.status >= 500 && attempt < maxAttempts) {
-            await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
-            continue;
-          }
-
-          throw new Error(`Email delivery failed via Resend (Status ${resendRes.status}): ${errorDetail.slice(0, 200)}`);
-        }
-
-        const resendData = ((await resendRes.json()) || {}) as { id?: string };
-        const providerMessageId = resendData.id || messageId;
-        console.log(`[workflow] provider=resend attempt=${attempt} status=completed messageId=${providerMessageId}`);
+        console.log(`[workflow] provider=sendgrid attempt=${attempt} status=completed messageId=${providerMessageId}`);
 
         return {
           success: true,
@@ -1190,32 +1166,42 @@ export async function executeNotify(
           messageId: providerMessageId,
           status: "delivered",
           details: {
-            provider: "Resend",
+            provider: "SendGrid",
             to: resolvedRecipient,
+            statusCode: sendgridRes.statusCode,
           },
         };
       } catch (err: unknown) {
-        const error = err as Error;
-        // If it's a permanent 4xx error thrown above, rethrow immediately without retrying
-        if (error.message.includes("rejected by Resend (4")) {
-          throw error;
+        const error = err as Error & {
+          code?: number;
+          response?: {
+            statusCode?: number;
+            body?: { errors?: Array<{ message?: string; field?: string }> };
+          };
+        };
+
+        const statusCode = error.response?.statusCode || error.code || 500;
+        const sendgridErrors = error.response?.body?.errors;
+        const errorDetail =
+          Array.isArray(sendgridErrors) && sendgridErrors.length > 0
+            ? sendgridErrors.map((e) => e.message || JSON.stringify(e)).join("; ")
+            : error.message || "SendGrid request failed";
+
+        const formattedError = new Error(`Email delivery failed via SendGrid (Status ${statusCode}): ${errorDetail.slice(0, 200)}`);
+        lastError = formattedError;
+
+        // 4xx errors from provider are permanent -> fail fast without blind retries
+        if (statusCode >= 400 && statusCode < 500) {
+          throw new Error(`Email delivery rejected by SendGrid (${statusCode}): ${errorDetail.slice(0, 200)}`);
         }
 
-        const isNetworkFetchError =
-          error.message.toLowerCase().includes("fetch failed") ||
-          error.name === "TimeoutError" ||
-          error.name === "AbortError";
-        const normalizedMessage = isNetworkFetchError
-          ? "Unable to reach notification service (network timeout or connection reset)."
-          : error.message;
-
-        lastError = new Error(normalizedMessage);
-
-        if (attempt < maxAttempts) {
-          console.warn(`[workflow] provider=resend transient error on attempt ${attempt}: ${error.message}. Retrying in ${500 * Math.pow(2, attempt - 1)}ms...`);
+        // 5xx server errors -> retry with exponential backoff
+        if (statusCode >= 500 && attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
           continue;
         }
+
+        throw formattedError;
       }
     }
 
